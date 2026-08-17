@@ -1,0 +1,35 @@
+@import 'tailwindcss';
+
+/*
+ * Paleta del sistema (definida en el prompt maestro).
+ * Tailwind 4 usa configuración en CSS: estos tokens quedan disponibles como
+ * utilidades (bg-primario, text-secundario, etc.) sin tailwind.config.js.
+ */
+@theme {
+  --color-primario: #2563eb;
+  --color-secundario: #10b981;
+  --color-acento: #8b5cf6;
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+/*
+ * Mobile-first: el objetivo táctil mínimo es 44px (requisito de accesibilidad
+ * del prompt maestro). Se aplica a controles interactivos por defecto.
+ */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+    font-family: var(--font-sans);
+  }
+
+  button,
+  [role='button'],
+  a.btn {
+    min-height: 44px;
+  }
+}
