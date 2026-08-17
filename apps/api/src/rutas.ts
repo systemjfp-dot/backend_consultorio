@@ -12,6 +12,7 @@ import type { Router } from 'express'
 import { rutasAgenda } from './modules/agenda/agenda.routes.js'
 import { rutasAuditoria } from './modules/auditoria/auditoria.routes.js'
 import { rutasAuth } from './modules/auth/auth.routes.js'
+import { rutasCitas } from './modules/citas/citas.routes.js'
 import { rutasEmergencia } from './modules/emergencia/emergencia.routes.js'
 import { rutasInstalacion } from './modules/instalacion/instalacion.routes.js'
 import { rutasPacientes } from './modules/pacientes/pacientes.routes.js'
@@ -30,4 +31,5 @@ export const MODULOS_DE_RUTAS: ModuloDeRutas[] = [
   { prefijo: '/api/instalacion', router: rutasInstalacion },
   { prefijo: '/api/pacientes', router: rutasPacientes },
   { prefijo: '/api/agenda', router: rutasAgenda },
+  { prefijo: '/api/citas', router: rutasCitas },
 ]

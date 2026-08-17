@@ -18,6 +18,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Cargando } from './components/ui/index.js'
+import { Agenda } from './features/agenda/Agenda.js'
 import { FichaPaciente } from './features/pacientes/FichaPaciente.js'
 import { ListaPacientes } from './features/pacientes/ListaPacientes.js'
 import { NuevoPaciente } from './features/pacientes/NuevoPaciente.js'
@@ -108,7 +109,7 @@ function Rutas() {
           path="agenda"
           element={
             <RutaConPermiso permiso="appointment:read">
-              <EnConstruccion titulo="Agenda" hito="H2" />
+              <Agenda />
             </RutaConPermiso>
           }
         />
