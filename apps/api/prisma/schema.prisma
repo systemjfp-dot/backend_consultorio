@@ -1,0 +1,941 @@
+// =============================================================================
+//  Esquema de datos — Sistema de gestión de consultorio médico
+//  Clínica única · multi-médico · multi-sede
+// =============================================================================
+//
+//  CONVENCIONES (ver datos/PLAN-DESARROLLO.md):
+//
+//  · Fechas: todo DateTime es Timestamptz (UTC). Los horarios plantilla se
+//    guardan como MINUTOS desde medianoche (Int) en hora local de la clínica.
+//    Nunca comparar horas como texto ("9:00" < "10:00" es falso).
+//
+//  · Integridad: las reglas que NO se pueden expresar en Prisma (constraints de
+//    exclusión para solapamientos, CHECK, particionado) viven en SQL dentro de
+//    las migraciones. Están marcadas con [SQL] en los comentarios.
+//
+//  · Historia clínica: nada se borra. Los pacientes usan borrado lógico
+//    (deletedAt) y las atenciones completadas se congelan; las correcciones
+//    van en AttendanceAddendum.
+//
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+//  1. CONFIGURACIÓN DE LA CLÍNICA
+// =============================================================================
+
+/// Configuración global. Tabla de UNA SOLA FILA (id = 1).
+/// [SQL] CHECK (id = 1) garantiza que no pueda existir una segunda.
+/// Reemplaza al modelo `Tenant` del diseño multi-tenant original.
+model ClinicSettings {
+  id Int @id @default(1)
+
+  name    String
+  ruc     String
+  address String
+  phone   String
+  email   String
+  logoUrl String?
+
+  /// Zona horaria IANA. Interpreta todos los horarios plantilla.
+  timezone String @default("America/Lima")
+
+  /// Duración por defecto de una cita, en minutos.
+  defaultSlotMinutes Int @default(20)
+
+  /// Con cuántas horas de anticipación se envía el recordatorio.
+  reminderHoursBefore Int @default(24)
+
+  /// Ajustes libres que no justifican una columna propia.
+  config Json @default("{}")
+
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
+
+// =============================================================================
+//  2. USUARIOS, ROLES Y SESIONES
+// =============================================================================
+
+enum Role {
+  ADMIN
+  DOCTOR
+  RECEPTIONIST
+  NURSE
+  CASHIER
+  AUDITOR
+}
+
+/// Cuenta de acceso al sistema.
+///
+/// `roles` es una LISTA a propósito: en un consultorio real el dueño suele ser
+/// médico y administrador a la vez. Con un rol único tendría que usar dos
+/// cuentas y se rompería la trazabilidad de quién firmó cada receta.
+///
+/// Los permisos efectivos se resuelven como:
+///     unión(roles) + extraPermissions − deniedPermissions
+/// La matriz vive en packages/shared, no en la base de datos (ver
+/// datos/ROLES-Y-PERMISOS.md §6).
+model User {
+  id        String  @id @default(cuid())
+  email     String  @unique
+  password  String
+  firstName String
+  lastName  String
+  phone     String?
+
+  roles Role[] @default([RECEPTIONIST])
+
+  /// Permisos concedidos por encima de los que dan sus roles.
+  extraPermissions String[] @default([])
+
+  /// Permisos revocados aunque sus roles los otorguen. Siempre ganan.
+  deniedPermissions String[] @default([])
+
+  isActive Boolean @default(true)
+
+  twoFactorSecret  String?
+  twoFactorEnabled Boolean @default(false)
+
+  doctor         Doctor?
+  sessions       Session[]
+  passwordResets PasswordReset[]
+  auditLogs      AuditLog[]
+  addenda        AttendanceAddendum[]
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([isActive])
+}
+
+/// Sesión activa. Permite cerrar sesión de verdad y revocar accesos al
+/// instante (p. ej. cuando alguien deja la clínica), cosa imposible con un
+/// JWT de 24 h sin estado.
+model Session {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Hash del refresh token. NUNCA se guarda el token en claro.
+  refreshTokenHash String @unique
+
+  userAgent String?
+  ipAddress String?
+
+  expiresAt DateTime  @db.Timestamptz(3)
+  revokedAt DateTime? @db.Timestamptz(3)
+
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  lastUsedAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Token de un solo uso para recuperar contraseña. Validez: 1 hora.
+model PasswordReset {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash String    @unique
+  expiresAt DateTime  @db.Timestamptz(3)
+  usedAt    DateTime? @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([userId])
+}
+
+// =============================================================================
+//  3. MÉDICOS Y SEDES
+// =============================================================================
+
+/// Datos profesionales del médico. Existe solo si el usuario tiene rol DOCTOR.
+model Doctor {
+  id String @id @default(cuid())
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  /// Número de colegiatura (CMP en Perú).
+  licenseNumber String @unique
+
+  /// Registro Nacional de Especialista, si aplica.
+  specialtyRegistryNumber String?
+
+  specialty String
+
+  /// Color con el que aparece en el calendario.
+  colorCode String @default("#2563EB")
+
+  /// Duración por defecto de sus consultas, en minutos.
+  defaultSlotMinutes Int @default(20)
+
+  /// Firma registrada UNA VEZ en su perfil, no dibujada en cada receta.
+  /// Referencia al archivo en almacenamiento; nunca base64 en la fila.
+  signatureUrl String?
+
+  isActive Boolean @default(true)
+
+  schedules      Schedule[]
+  exceptions     ScheduleException[]
+  appointments   Appointment[]
+  attendances    Attendance[]
+  prescriptions  Prescription[]
+  medicalExams   MedicalExam[]
+  waitlists      Waitlist[]
+  templates      PrescriptionTemplate[]
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([isActive])
+}
+
+/// Sede física de la clínica.
+/// En el documento original era un String suelto ("Sede Norte"), lo que hacía
+/// imposible el CRUD que pide el módulo 2.5 y renombrar sin tocar miles de filas.
+model Location {
+  id String @id @default(cuid())
+
+  name     String  @unique
+  address  String
+  phone    String?
+  isActive Boolean @default(true)
+
+  schedules    Schedule[]
+  appointments Appointment[]
+  waitlists    Waitlist[]
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
+
+/// Franja de atención recurrente de un médico (plantilla semanal).
+///
+/// Las horas son MINUTOS desde medianoche en hora local de la clínica:
+/// 480 = 08:00, 780 = 13:00. Esto hace que toda la aritmética de slots sea
+/// suma de enteros y permite el constraint de no-solapamiento.
+///
+/// [SQL] EXCLUDE USING gist impide dos franjas superpuestas del mismo médico
+/// el mismo día — lo que `@@unique([doctorId, dayOfWeek, startTime])` del
+/// diseño original NO lograba (dejaba pasar 08:00-13:00 y 09:00-11:00).
+model Schedule {
+  id String @id @default(cuid())
+
+  doctorId String
+  doctor   Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  locationId String?
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: Restrict)
+
+  /// 0 = domingo … 6 = sábado
+  dayOfWeek Int
+
+  /// Minutos desde medianoche, hora local. [SQL] CHECK 0 ≤ start < end ≤ 1440
+  startMinute Int
+  endMinute   Int
+
+  /// Duración del slot en esta franja. Si es null, usa la del médico.
+  slotMinutes Int?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([doctorId, dayOfWeek])
+  @@index([locationId])
+}
+
+enum ExceptionType {
+  /// El médico no atiende (vacaciones, feriado, congreso).
+  UNAVAILABLE
+  /// Atiende fuera de su horario habitual.
+  EXTRA
+}
+
+/// Excepción puntual al horario semanal.
+/// No estaba en el diseño original, pero sin esto no se pueden registrar
+/// vacaciones ni feriados y la agenda ofrece horas que el médico no atiende.
+model ScheduleException {
+  id String @id @default(cuid())
+
+  doctorId String
+  doctor   Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  /// Día afectado (a medianoche, hora local de la clínica).
+  date DateTime @db.Date
+
+  type ExceptionType @default(UNAVAILABLE)
+
+  /// Si ambos son null, la excepción cubre el día completo.
+  startMinute Int?
+  endMinute   Int?
+
+  reason String?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([doctorId, date])
+}
+
+// =============================================================================
+//  4. PACIENTES
+// =============================================================================
+
+enum DocumentType {
+  DNI
+  CE
+  PASSPORT
+  OTHER
+}
+
+enum Gender {
+  M
+  F
+  OTHER
+}
+
+model Patient {
+  id String @id @default(cuid())
+
+  documentType DocumentType @default(DNI)
+  document     String
+  firstName    String
+  lastName     String
+  birthDate    DateTime     @db.Date
+  gender       Gender
+
+  phone   String
+  email   String?
+  address String?
+
+  /// Alergias conocidas. Se muestra destacado en la ficha de atención.
+  allergies String?
+
+  /// Antecedentes resumidos de ingreso (los de cada consulta van en Attendance).
+  medicalHistory String?
+
+  /// Borrado lógico: una historia clínica no se elimina.
+  deletedAt DateTime? @db.Timestamptz(3)
+
+  appointments  Appointment[]
+  attendances   Attendance[]
+  waitlists     Waitlist[]
+  prescriptions Prescription[]
+  medicalExams  MedicalExam[]
+  consents      PatientConsent[]
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  /// Un documento identifica a una persona. Sin multi-tenant, es único global.
+  @@unique([documentType, document])
+  @@index([lastName, firstName])
+  @@index([deletedAt])
+  /// Búsqueda por documento tolerante a parciales ("1234" encuentra "12345678").
+  @@index([document(ops: raw("gin_trgm_ops"))], type: Gin)
+}
+
+enum ConsentType {
+  /// Tratamiento de datos personales sensibles (Ley 29733).
+  DATA_PROCESSING
+  /// Grabación de la consulta para asistencia por IA.
+  AI_RECORDING
+  /// Atención por teleconsulta.
+  TELECONSULTATION
+}
+
+/// Consentimiento informado, versionado.
+/// Requisito de la Ley 29733: los datos de salud son datos sensibles y
+/// requieren consentimiento expreso, demostrable y revocable.
+model PatientConsent {
+  id String @id @default(cuid())
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Restrict)
+
+  type    ConsentType
+  /// Versión del texto aceptado, para poder demostrar QUÉ se aceptó.
+  version String
+
+  acceptedAt  DateTime  @default(now()) @db.Timestamptz(3)
+  revokedAt   DateTime? @db.Timestamptz(3)
+  documentUrl String?
+
+  @@index([patientId, type])
+}
+
+// =============================================================================
+//  5. CITAS
+// =============================================================================
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  /// El paciente llegó y espera. Faltaba en el diseño original: sin este
+  /// estado no hay sala de espera ni "llamar al siguiente".
+  ARRIVED
+  IN_ATTENTION
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum Modality {
+  PRESENCIAL
+  TELECONSULTA
+}
+
+/// Cita agendada.
+///
+/// Se guardan `startsAt` y `endsAt` como columnas reales (no una duración
+/// suelta) porque el constraint de exclusión necesita un rango inmutable.
+///
+/// [SQL] EXCLUDE USING gist (doctorId =, tstzrange(startsAt, endsAt) &&)
+///       WHERE status NOT IN (CANCELLED, NO_SHOW) AND NOT allowOverbook
+///
+/// Esto es lo que el `@@unique([doctorId, date])` original prometía pero no
+/// cumplía: aquel ignoraba la duración (09:00 y 09:10 de 20 min se pisan pero
+/// pasaban), bloqueaba la sobreagenda que el módulo 4.2 pide, y dejaba las
+/// citas canceladas ocupando el horario para siempre.
+model Appointment {
+  id String @id @default(cuid())
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Restrict)
+
+  doctorId String
+  doctor   Doctor @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+
+  locationId String?
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: Restrict)
+
+  startsAt DateTime @db.Timestamptz(3)
+  endsAt   DateTime @db.Timestamptz(3)
+
+  status   AppointmentStatus @default(SCHEDULED)
+  modality Modality          @default(PRESENCIAL)
+
+  /// Sobreagenda explícita: excluye esta cita del constraint de solapamiento.
+  /// Requiere el permiso `appointment:overbook`.
+  allowOverbook Boolean @default(false)
+
+  /// Motivo de consulta declarado al agendar.
+  reason String?
+  /// Notas internas de recepción (no clínicas).
+  notes  String?
+
+  /// Sala de teleconsulta, si aplica.
+  roomUrl String?
+
+  arrivedAt   DateTime? @db.Timestamptz(3)
+  confirmedAt DateTime? @db.Timestamptz(3)
+
+  cancelledAt     DateTime? @db.Timestamptz(3)
+  cancelReason    String?
+  /// Quién canceló: PATIENT | CLINIC. Alimenta las estadísticas del módulo 10.
+  cancelledBy     String?
+
+  reminderSentAt   DateTime? @db.Timestamptz(3)
+  reminderAttempts Int       @default(0)
+
+  createdById String?
+
+  attendance    Attendance?
+  waitlistEntry Waitlist?
+  notifications Notification[]
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([startsAt, doctorId])
+  @@index([patientId])
+  @@index([status])
+  @@index([locationId])
+}
+
+enum WaitlistStatus {
+  WAITING
+  NOTIFIED
+  SCHEDULED
+  CANCELLED
+  EXPIRED
+}
+
+enum TimePreference {
+  MORNING
+  AFTERNOON
+  EVENING
+  ANY
+}
+
+/// Lista de espera. Cuando se cancela una cita, se notifica al primero.
+model Waitlist {
+  id String @id @default(cuid())
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Restrict)
+
+  /// Null = "cualquier médico".
+  doctorId String?
+  doctor   Doctor? @relation(fields: [doctorId], references: [id], onDelete: SetNull)
+
+  locationId String?
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  preferredDate DateTime       @db.Date
+  preferredTime TimePreference @default(ANY)
+
+  status     WaitlistStatus @default(WAITING)
+  notifiedAt DateTime?      @db.Timestamptz(3)
+
+  /// Cita que resolvió esta espera. Cierra la relación que el diseño original
+  /// declaraba desde Appointment pero que era imposible (faltaba la clave).
+  appointmentId String?      @unique
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([status, preferredDate])
+  @@index([patientId])
+}
+
+// =============================================================================
+//  6. ATENCIÓN EN CONSULTORIO
+// =============================================================================
+
+/// Registro clínico de una consulta.
+///
+/// Los campos siguen la estructura de la NTS 139-MINSA/2018 (anamnesis,
+/// antecedentes, examen físico, diagnóstico, plan), no solo el subconjunto
+/// del documento original.
+///
+/// Al completarse queda CONGELADA (`lockedAt`). Las correcciones posteriores
+/// se registran como AttendanceAddendum, nunca sobrescribiendo. Así funciona
+/// un EMR real y es lo que protege legalmente al médico.
+model Attendance {
+  id String @id @default(cuid())
+
+  appointmentId String      @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Restrict)
+
+  doctorId String
+  doctor   Doctor @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Restrict)
+
+  startedAt DateTime  @default(now()) @db.Timestamptz(3)
+  endedAt   DateTime? @db.Timestamptz(3)
+
+  // --- Signos vitales ---
+  /// Se guardan sistólica y diastólica por separado: "120/80" como texto no
+  /// permite graficar tendencias ni detectar valores fuera de rango.
+  bloodPressureSystolic  Int?
+  bloodPressureDiastolic Int?
+  heartRate              Int?
+  respiratoryRate        Int?
+  temperature            Decimal? @db.Decimal(4, 1)
+  oxygenSaturation       Int?
+  weightKg               Decimal? @db.Decimal(5, 2)
+  heightCm               Decimal? @db.Decimal(5, 2)
+  /// NO existe columna `bmi`. El IMC es una función pura de peso y talla, así
+  /// que se calcula al leer. Guardarlo como campo editable —como proponía el
+  /// diseño original— garantiza que tarde o temprano contradiga a sus propios
+  /// insumos, y no hay forma de saber cuál de los tres valores es el correcto.
+
+  // --- Anamnesis (NTS 139) ---
+  reason         String?
+  currentIllness String?
+
+  // --- Antecedentes ---
+  personalHistory  String?
+  familyHistory    String?
+  surgicalHistory  String?
+  medicationsInUse String?
+
+  // --- Examen físico y conclusión ---
+  physicalExam  String?
+  diagnosis     String?
+  treatmentPlan String?
+  notes         String?
+
+  /// Momento en que se congela. Null = atención en curso.
+  lockedAt DateTime? @db.Timestamptz(3)
+
+  diagnoses     AttendanceDiagnosis[]
+  prescriptions Prescription[]
+  medicalExams  MedicalExam[]
+  addenda       AttendanceAddendum[]
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([patientId, startedAt])
+  @@index([doctorId, startedAt])
+}
+
+/// Diagnóstico codificado. Una consulta puede tener varios (uno principal).
+/// El documento original solo permitía un `icd10Code` suelto.
+model AttendanceDiagnosis {
+  id String @id @default(cuid())
+
+  attendanceId String
+  attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+
+  code String
+  icd  Icd10Code @relation(fields: [code], references: [code], onDelete: Restrict)
+
+  isPrimary Boolean @default(false)
+  note      String?
+
+  @@unique([attendanceId, code])
+  @@index([code])
+}
+
+/// Corrección o agregado a una atención ya congelada.
+/// Deja constancia de quién, cuándo y qué, sin alterar el registro original.
+model AttendanceAddendum {
+  id String @id @default(cuid())
+
+  attendanceId String
+  attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Restrict)
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  content String
+  reason  String?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([attendanceId])
+}
+
+// =============================================================================
+//  7. RECETAS
+// =============================================================================
+
+enum SignatureType {
+  /// Imagen de firma registrada en el perfil del médico.
+  DRAWN
+  /// Firma electrónica con certificado digital (D.S. 098-2025-PCM).
+  CERTIFICATE
+}
+
+model Prescription {
+  id String @id @default(cuid())
+
+  attendanceId String
+  attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Restrict)
+
+  doctorId String
+  doctor   Doctor @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Restrict)
+
+  issuedAt     DateTime @default(now()) @db.Timestamptz(3)
+  validityDays Int      @default(30)
+
+  /// Indicaciones generales, aparte de cada medicamento.
+  instructions String?
+
+  // --- Firma y documento ---
+  signatureType SignatureType @default(DRAWN)
+  signedAt      DateTime?     @db.Timestamptz(3)
+  /// Serie del certificado usado, cuando la firma es con certificado digital.
+  certificateSerial String?
+
+  pdfUrl String?
+  /// SHA-256 del PDF emitido. Permite demostrar que no fue alterado.
+  pdfHash String?
+
+  items MedicineItem[]
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([patientId, issuedAt])
+  @@index([doctorId, issuedAt])
+  @@index([attendanceId])
+}
+
+model MedicineItem {
+  id String @id @default(cuid())
+
+  prescriptionId String
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+
+  name          String
+  concentration String?
+  form          String?
+  route         String?
+  frequency     String?
+  duration      String?
+  quantity      Int?
+  instructions  String?
+
+  /// Orden en que aparece en el PDF.
+  position Int @default(0)
+
+  @@index([prescriptionId])
+}
+
+/// "Mis recetas frecuentes": un médico repite las mismas combinaciones.
+/// Los medicamentos van en Json porque son una plantilla, no datos clínicos
+/// consultables.
+model PrescriptionTemplate {
+  id String @id @default(cuid())
+
+  doctorId String
+  doctor   Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  name         String
+  instructions String?
+  items        Json    @default("[]")
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([doctorId, name])
+}
+
+// =============================================================================
+//  8. EXÁMENES AUXILIARES
+// =============================================================================
+
+enum ExamType {
+  LABORATORY
+  IMAGING
+  SPECIAL
+  OTHER
+}
+
+model MedicalExam {
+  id String @id @default(cuid())
+
+  attendanceId String
+  attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Restrict)
+
+  doctorId String
+  doctor   Doctor @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Restrict)
+
+  type         ExamType
+  name         String
+  instructions String?
+  isUrgent     Boolean  @default(false)
+
+  issuedAt DateTime  @default(now()) @db.Timestamptz(3)
+  dueDate  DateTime? @db.Date
+
+  /// Resultado, cargado después por el médico o enfermería.
+  result       String?
+  resultUrl    String?
+  resultAt     DateTime? @db.Timestamptz(3)
+
+  pdfUrl String?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([patientId, issuedAt])
+  @@index([doctorId, issuedAt])
+  @@index([attendanceId])
+}
+
+// =============================================================================
+//  9. CATÁLOGOS
+// =============================================================================
+//  Sin estos catálogos, los campos de "búsqueda con autocompletado" que pide el
+//  documento quedan vacíos: no hay de dónde sacar los códigos ni los fármacos.
+//  [SQL] Índices GIN con pg_trgm para búsqueda difusa ("diabet" → E10-E14).
+
+/// Clasificación Internacional de Enfermedades, 10.ª revisión.
+model Icd10Code {
+  code        String @id
+  description String
+  /// Capítulo o grupo, para filtrar y agrupar en reportes.
+  category    String?
+
+  isActive Boolean @default(true)
+
+  diagnoses AttendanceDiagnosis[]
+
+  @@index([category])
+  /// Búsqueda difusa: "diabet" encuentra "Diabetes mellitus…".
+  @@index([description(ops: raw("gin_trgm_ops"))], type: Gin)
+}
+
+/// Catálogo de productos farmacéuticos (base: registro DIGEMID).
+model MedicineCatalog {
+  id String @id @default(cuid())
+
+  name          String
+  /// Denominación común internacional (principio activo).
+  genericName   String?
+  concentration String?
+  form          String?
+
+  isActive Boolean @default(true)
+
+  @@unique([name, concentration, form])
+}
+
+/// Catálogo de exámenes ofrecidos, por tipo.
+model ExamCatalog {
+  id String @id @default(cuid())
+
+  type         ExamType
+  name         String
+  instructions String?
+
+  isActive Boolean @default(true)
+
+  @@unique([type, name])
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
+}
+
+// =============================================================================
+//  10. AUDITORÍA
+// =============================================================================
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  VIEW
+  PRINT
+  EXPORT
+  LOGIN
+  LOGIN_FAILED
+  LOGOUT
+  /// Acceso de emergencia a una historia fuera del alcance del médico.
+  BREAK_GLASS
+}
+
+/// Registro de acciones. Requisito legal (Ley 30024 / RENHICE y Ley 29733):
+/// el acceso a historias clínicas electrónicas debe quedar trazado.
+///
+/// [SQL] La tabla es APPEND-ONLY (se revocan UPDATE y DELETE al usuario de la
+/// aplicación) y está PARTICIONADA POR MES, porque registrar cada lectura
+/// clínica la lleva a millones de filas en un año.
+///
+/// La clave primaria incluye createdAt porque PostgreSQL exige que la clave de
+/// partición forme parte de la clave primaria.
+model AuditLog {
+  id String @default(cuid())
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  action AuditAction
+  /// Modelo afectado: Patient, Appointment, Attendance...
+  entity   String
+  entityId String?
+
+  /// Permiso ejercido y roles efectivos EN ESE MOMENTO. Guardarlos aquí
+  /// permite auditar sin depender de que el rol del usuario no haya cambiado.
+  permission String?
+  roles      Role[]  @default([])
+
+  /// Motivo obligatorio cuando action = BREAK_GLASS.
+  reason String?
+
+  changes   Json?
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@id([id, createdAt])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([entity, entityId])
+  @@index([action])
+}
+
+// =============================================================================
+//  11. NOTIFICACIONES
+// =============================================================================
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+enum NotificationType {
+  WELCOME
+  APPOINTMENT_CONFIRMATION
+  APPOINTMENT_REMINDER
+  APPOINTMENT_CANCELLED
+  WAITLIST_SLOT_AVAILABLE
+  PASSWORD_RESET
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+/// Credenciales del proveedor por canal (SMTP, WhatsApp Business, SMS).
+model NotificationConfig {
+  id String @id @default(cuid())
+
+  channel  NotificationChannel @unique
+  provider String
+  /// [SQL] Se cifra a nivel de aplicación antes de guardar.
+  config   Json
+  isActive Boolean             @default(true)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
+
+/// Mensaje enviado o por enviar. Sirve de bitácora y evita duplicados.
+model Notification {
+  id String @id @default(cuid())
+
+  recipient String
+  channel   NotificationChannel
+  type      NotificationType
+  subject   String?
+  content   String
+
+  status NotificationStatus @default(PENDING)
+  sentAt DateTime?          @db.Timestamptz(3)
+  error  String?
+
+  appointmentId String?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  /// Clave de idempotencia: evita enviar dos veces el mismo recordatorio
+  /// cuando el proceso se reinicia o corren dos réplicas a la vez.
+  idempotencyKey String? @unique
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([status, createdAt])
+  @@index([appointmentId])
+}
