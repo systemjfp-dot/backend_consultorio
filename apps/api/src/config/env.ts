@@ -48,6 +48,19 @@ const listaSeparadaPorComas = z
       .filter(Boolean),
   )
 
+/**
+ * Trata una variable vacía como ausente.
+ *
+ * `.env.example` se distribuye con las claves opcionales sin valor
+ * (`DNI_API_URL=`), y al copiarlo llegan como cadena vacía. Sin esto, `.url()`
+ * la rechaza por no ser una URL válida y el proceso NO ARRANCA por una
+ * integración que ni siquiera está en uso — que es exactamente lo contrario de
+ * lo que debe hacer un campo opcional.
+ */
+function opcional<T extends z.ZodType>(esquema: T) {
+  return z.preprocess((valor) => (valor === '' ? undefined : valor), esquema.optional())
+}
+
 const esquema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -68,11 +81,16 @@ const esquema = z
     // aplica sobre la SALIDA de la transformación, no sobre la entrada.
     CORS_ORIGINS: listaSeparadaPorComas.default(['http://localhost:5173']),
 
-    SMTP_HOST: z.string().optional(),
-    SMTP_PORT: z.coerce.number().int().positive().optional(),
-    SMTP_USER: z.string().optional(),
-    SMTP_PASS: z.string().optional(),
-    SMTP_FROM: z.string().optional(),
+    SMTP_HOST: opcional(z.string()),
+    SMTP_PORT: opcional(z.coerce.number().int().positive()),
+    SMTP_USER: opcional(z.string()),
+    SMTP_PASS: opcional(z.string()),
+    SMTP_FROM: opcional(z.string()),
+
+    // Consulta de documento (RENIEC vía intermediario). Sin ambas, el
+    // autocompletado queda desactivado y el registro manual sigue igual.
+    DNI_API_URL: opcional(z.string().url()),
+    DNI_API_TOKEN: opcional(z.string()),
   })
   .refine((v) => v.JWT_ACCESS_SECRET !== v.JWT_REFRESH_SECRET, {
     message:

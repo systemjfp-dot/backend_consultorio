@@ -15,9 +15,12 @@
 
 import type { Permiso } from '@consultorio/shared'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Cargando } from './components/ui/index.js'
+import { FichaPaciente } from './features/pacientes/FichaPaciente.js'
+import { ListaPacientes } from './features/pacientes/ListaPacientes.js'
+import { NuevoPaciente } from './features/pacientes/NuevoPaciente.js'
 import { LayoutPrincipal } from './layouts/LayoutPrincipal.js'
 import { ProveedorAuth, useAuth } from './lib/auth.js'
 import { ConfigurarDosFactores } from './pages/ConfigurarDosFactores.js'
@@ -26,7 +29,16 @@ import { Inicio } from './pages/Inicio.js'
 import { Login } from './pages/Login.js'
 import { NoEncontrada } from './pages/NoEncontrada.js'
 
-const clienteConsultas = new QueryClient({
+/**
+ * Configuración de la caché de datos del servidor.
+ *
+ * El cliente se crea POR INSTANCIA de la aplicación, no a nivel de módulo. En
+ * el navegador da igual —la aplicación se monta una sola vez— pero en las
+ * pruebas un cliente compartido conserva la caché entre casos: una prueba que
+ * espera un 404 recibía los datos que dejó cacheados la anterior.
+ */
+function crearClienteConsultas() {
+  return new QueryClient({
   defaultOptions: {
     queries: {
       // Un minuto de frescura: en una recepción, los datos cambian de verdad
@@ -42,7 +54,8 @@ const clienteConsultas = new QueryClient({
       },
     },
   },
-})
+  })
+}
 
 /** Envuelve las rutas que requieren sesión. */
 function RutaProtegida({ children }: { children: ReactNode }) {
@@ -103,7 +116,23 @@ function Rutas() {
           path="pacientes"
           element={
             <RutaConPermiso permiso="patient:read">
-              <EnConstruccion titulo="Pacientes" hito="H1" />
+              <ListaPacientes />
+            </RutaConPermiso>
+          }
+        />
+        <Route
+          path="pacientes/nuevo"
+          element={
+            <RutaConPermiso permiso="patient:create">
+              <NuevoPaciente />
+            </RutaConPermiso>
+          }
+        />
+        <Route
+          path="pacientes/:id"
+          element={
+            <RutaConPermiso permiso="patient:read">
+              <FichaPaciente />
             </RutaConPermiso>
           }
         />
@@ -156,6 +185,8 @@ function Rutas() {
 }
 
 export function App() {
+  const [clienteConsultas] = useState(crearClienteConsultas)
+
   return (
     <QueryClientProvider client={clienteConsultas}>
       <BrowserRouter>
