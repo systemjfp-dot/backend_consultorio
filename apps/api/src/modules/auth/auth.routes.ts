@@ -67,6 +67,12 @@ rutasAuth.post(
 rutasAuth.use(requiereAutenticacion)
 
 rutasAuth.get(
+  '/yo',
+  rutaPropia('Devuelve los datos de la sesión de quien llama, de nadie más'),
+  controlador.usuarioActual,
+)
+
+rutasAuth.get(
   '/sesiones',
   rutaPropia('Cada usuario ve únicamente sus propias sesiones abiertas'),
   controlador.sesionActual,

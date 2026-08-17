@@ -81,7 +81,7 @@ async function crearSesion(usuarioId: string, cliente: DatosCliente): Promise<Pa
 }
 
 /** Datos que la web necesita para dibujar la interfaz tras iniciar sesión. */
-async function construirUsuarioSesion(usuarioId: string): Promise<UsuarioSesion> {
+export async function construirUsuarioSesion(usuarioId: string): Promise<UsuarioSesion> {
   const usuario = await prisma.user.findUniqueOrThrow({
     where: { id: usuarioId },
     select: {

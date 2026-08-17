@@ -115,6 +115,18 @@ export const logout: RequestHandler = async (req, res) => {
   res.status(204).end()
 }
 
+/**
+ * Datos de la sesión actual.
+ *
+ * La web los recarga tras cambiar algo que afecta a la interfaz (activar el
+ * segundo factor, un permiso concedido por el administrador) sin obligar a
+ * cerrar y abrir sesión.
+ */
+export const usuarioActual: RequestHandler = async (req, res) => {
+  if (!req.auth) throw new ErrorNoAutenticado()
+  res.json({ usuario: await servicio.construirUsuarioSesion(req.auth.usuarioId) })
+}
+
 export const sesionActual: RequestHandler = async (req, res) => {
   if (!req.auth) throw new ErrorNoAutenticado()
   res.json({ sesiones: await servicio.listarSesiones(req.auth.usuarioId) })
