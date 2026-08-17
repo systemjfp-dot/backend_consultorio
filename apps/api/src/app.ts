@@ -17,8 +17,7 @@ import { logger } from './core/logger.js'
 import { cargarSesion } from './middleware/autenticar.js'
 import { manejadorErrores, manejadorNoEncontrado } from './middleware/errores.js'
 import { limiteGeneral } from './middleware/limites.js'
-import { rutasAuth } from './modules/auth/auth.routes.js'
-import { rutasSalud } from './modules/salud/salud.routes.js'
+import { MODULOS_DE_RUTAS } from './rutas.js'
 
 export function crearApp(): Express {
   const app = express()
@@ -91,8 +90,9 @@ export function crearApp(): Express {
   app.use('/api', limiteGeneral)
 
   // --- Rutas ----------------------------------------------------------------
-  app.use('/api', rutasSalud)
-  app.use('/api/auth', rutasAuth)
+  for (const modulo of MODULOS_DE_RUTAS) {
+    app.use(modulo.prefijo, modulo.router)
+  }
 
   // --- Cierre ---------------------------------------------------------------
   // Estos dos van siempre al final: Express elige el primer manejador que

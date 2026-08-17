@@ -14,17 +14,22 @@
 
 import { Router } from 'express'
 import { baseDeDatosResponde } from '../../core/prisma.js'
+import { rutaPublica } from '../../middleware/permisos.js'
 
 export const rutasSalud: Router = Router()
 
-rutasSalud.get('/health', (_req, res) => {
+const motivoPublico = rutaPublica(
+  'El orquestador consulta la salud del servicio antes de que exista sesión alguna',
+)
+
+rutasSalud.get('/health', motivoPublico, (_req, res) => {
   res.json({
     estado: 'ok',
     tiempoActivoSegundos: Math.floor(process.uptime()),
   })
 })
 
-rutasSalud.get('/health/ready', async (_req, res) => {
+rutasSalud.get('/health/ready', motivoPublico, async (_req, res) => {
   const baseOk = await baseDeDatosResponde()
 
   res.status(baseOk ? 200 : 503).json({

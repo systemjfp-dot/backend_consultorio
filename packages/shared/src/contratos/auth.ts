@@ -117,3 +117,19 @@ export type ResultadoLogin = RespuestaLogin | RespuestaDesafio2FA
 export function requiere2FA(resultado: ResultadoLogin): resultado is RespuestaDesafio2FA {
   return 'requiere2FA' in resultado
 }
+
+// --- Acceso de emergencia (break-the-glass) ----------------------------------
+
+export const esquemaAccesoEmergencia = z.object({
+  /**
+   * Mínimo 20 caracteres a propósito. Un campo libre que acepta "urgencia" no
+   * deja rastro de nada: obligar a redactar una frase es lo que convierte el
+   * registro en algo revisable, y hace que quien fisgonea se lo piense.
+   */
+  motivo: z
+    .string()
+    .trim()
+    .min(20, 'Explica el motivo del acceso en al menos 20 caracteres')
+    .max(500),
+})
+export type DatosAccesoEmergencia = z.infer<typeof esquemaAccesoEmergencia>
