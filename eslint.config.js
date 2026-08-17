@@ -18,4 +18,12 @@ export default tseslint.config(
       'no-console': ['warn', { allow: ['warn', 'error'] }],
     },
   },
+  {
+    // Scripts de consola (instalación y datos de ejemplo): aquí la salida por
+    // consola no es un descuido de depuración, es la interfaz del programa.
+    files: ['apps/api/prisma/**/*.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
 )

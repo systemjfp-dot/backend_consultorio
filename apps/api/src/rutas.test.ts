@@ -125,6 +125,7 @@ describe('cobertura de control de acceso', () => {
     expect(publicas).toEqual([
       'GET /api/health',
       'GET /api/health/ready',
+      'GET /api/instalacion/estado',
       'POST /api/auth/2fa/verificar',
       'POST /api/auth/login',
       'POST /api/auth/logout',
