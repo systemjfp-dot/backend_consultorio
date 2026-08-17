@@ -22,6 +22,7 @@ import { Link, useParams } from 'react-router-dom'
 import { Alerta, Boton, Campo, Cargando, Tarjeta } from '../../components/ui/index.js'
 import { ErrorApi } from '../../lib/api.js'
 import { useAuth } from '../../lib/auth.js'
+import { HistorialClinico } from './HistorialClinico.js'
 import { actualizarPaciente, obtenerPaciente } from './api.js'
 
 export function FichaPaciente() {
@@ -122,15 +123,7 @@ export function FichaPaciente() {
             </p>
           </Tarjeta>
 
-          <Tarjeta>
-            <h2 className="mb-1 font-medium text-gray-900">Historial clínico</h2>
-            <p className="text-sm text-gray-600">
-              Atenciones, recetas y exámenes de este paciente.
-            </p>
-            <p className="mt-3 text-xs text-gray-400">
-              Llega con el módulo de atención, en el hito H3.
-            </p>
-          </Tarjeta>
+          {can('encounter:read') && <HistorialClinico pacienteId={paciente.id} />}
 
           <p className="text-xs text-gray-400">
             Ficha creada el{' '}

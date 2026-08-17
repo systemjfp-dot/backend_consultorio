@@ -19,6 +19,8 @@ import { useState, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Cargando } from './components/ui/index.js'
 import { Agenda } from './features/agenda/Agenda.js'
+import { FichaAtencion } from './features/atenciones/FichaAtencion.js'
+import { SalaDeEspera } from './features/atenciones/SalaDeEspera.js'
 import { FichaPaciente } from './features/pacientes/FichaPaciente.js'
 import { ListaPacientes } from './features/pacientes/ListaPacientes.js'
 import { NuevoPaciente } from './features/pacientes/NuevoPaciente.js'
@@ -141,7 +143,15 @@ function Rutas() {
           path="atencion"
           element={
             <RutaConPermiso permiso="encounter:create">
-              <EnConstruccion titulo="Atención en consultorio" hito="H3" />
+              <SalaDeEspera />
+            </RutaConPermiso>
+          }
+        />
+        <Route
+          path="atencion/:id"
+          element={
+            <RutaConPermiso permiso="encounter:read">
+              <FichaAtencion />
             </RutaConPermiso>
           }
         />
