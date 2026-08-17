@@ -6,10 +6,18 @@
 
 import { crearApp } from './app.js'
 import { env } from './config/env.js'
+import { asegurarParticionesAuditoria } from './core/auditoria.js'
 import { logger } from './core/logger.js'
 import { desconectarBaseDeDatos } from './core/prisma.js'
 
 const app = crearApp()
+
+// Las particiones de auditoría se crean por adelantado en cada arranque. Es
+// idempotente y barato, y evita depender de una tarea programada para algo que
+// si falta hace caer los registros en la partición de resto.
+await asegurarParticionesAuditoria().catch((error: unknown) => {
+  logger.error({ err: error }, 'No se pudieron asegurar las particiones de auditoría')
+})
 
 const servidor = app.listen(env.PORT, () => {
   logger.info(
