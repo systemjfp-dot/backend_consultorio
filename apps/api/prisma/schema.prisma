@@ -107,7 +107,6 @@ model User {
   doctor         Doctor?
   sessions       Session[]
   passwordResets PasswordReset[]
-  auditLogs      AuditLog[]
   addenda        AttendanceAddendum[]
 
   createdAt DateTime @default(now()) @db.Timestamptz(3)
@@ -843,8 +842,20 @@ enum AuditAction {
 model AuditLog {
   id String @default(cuid())
 
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /// SIN clave foránea a User, deliberadamente.
+  ///
+  /// Con `onDelete: SetNull`, borrar un usuario hacía que PostgreSQL
+  /// intentara ACTUALIZAR estas filas, y el trigger de inmutabilidad lo
+  /// impedía: la cuenta quedaba imposible de borrar. Aflojar el trigger sería
+  /// la solución equivocada — el registro no debe poder alterarse.
+  ///
+  /// Un registro de auditoría no debe depender de las tablas que audita: tiene
+  /// que sobrevivir a la desaparición de aquello a lo que se refiere. Por eso
+  /// se guarda además el correo tal como era EN ESE MOMENTO, que es el dato
+  /// que interesa en una revisión (un usuario pudo cambiar de correo después,
+  /// y una unión mostraría el actual, no el de entonces).
+  userId    String?
+  userEmail String?
 
   action AuditAction
   /// Modelo afectado: Patient, Appointment, Attendance...

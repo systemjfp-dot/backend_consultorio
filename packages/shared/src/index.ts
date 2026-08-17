@@ -11,3 +11,4 @@ export const VERSION_CONTRATOS = '0.1.0'
 
 export * from './auth/permisos.js'
 export * from './auth/roles.js'
+export * from './contratos/auth.js'

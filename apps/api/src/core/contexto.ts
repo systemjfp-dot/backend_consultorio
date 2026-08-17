@@ -15,6 +15,8 @@ import type { Rol } from '@consultorio/shared'
 
 export interface ContextoAuth {
   usuarioId: string
+  /** Se lleva en el contexto para poder auditar sin una consulta extra. */
+  email: string
   sesionId: string
   roles: Rol[]
   /** Presente solo si el usuario tiene rol DOCTOR. Define el alcance `own`. */

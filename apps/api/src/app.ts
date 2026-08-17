@@ -7,14 +7,17 @@
  */
 
 import { randomUUID } from 'node:crypto'
+import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import express, { type Express } from 'express'
 import helmet from 'helmet'
 import { pinoHttp } from 'pino-http'
 import { env, esProduccion } from './config/env.js'
 import { logger } from './core/logger.js'
+import { cargarSesion } from './middleware/autenticar.js'
 import { manejadorErrores, manejadorNoEncontrado } from './middleware/errores.js'
 import { limiteGeneral } from './middleware/limites.js'
+import { rutasAuth } from './modules/auth/auth.routes.js'
 import { rutasSalud } from './modules/salud/salud.routes.js'
 
 export function crearApp(): Express {
@@ -79,11 +82,17 @@ export function crearApp(): Express {
   // proceso. Las imágenes (logo, firma) irán por su propia ruta de subida.
   app.use(express.json({ limit: '1mb' }))
   app.use(express.urlencoded({ extended: true, limit: '1mb' }))
+  app.use(cookieParser())
 
+  // --- Sesión ---------------------------------------------------------------
+  // Va ANTES del límite de peticiones a propósito: así el límite general puede
+  // aplicarse por usuario autenticado en vez de por IP (ver middleware/limites).
+  app.use(cargarSesion)
   app.use('/api', limiteGeneral)
 
   // --- Rutas ----------------------------------------------------------------
   app.use('/api', rutasSalud)
+  app.use('/api/auth', rutasAuth)
 
   // --- Cierre ---------------------------------------------------------------
   // Estos dos van siempre al final: Express elige el primer manejador que
