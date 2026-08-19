@@ -166,8 +166,38 @@ export async function peticion<T>(ruta: string, opciones: OpcionesPeticion = {})
 export const api = {
   get: <T,>(ruta: string) => peticion<T>(ruta),
   post: <T,>(ruta: string, cuerpo?: unknown) => peticion<T>(ruta, { method: 'POST', cuerpo }),
+  put: <T,>(ruta: string, cuerpo?: unknown) => peticion<T>(ruta, { method: 'PUT', cuerpo }),
   patch: <T,>(ruta: string, cuerpo?: unknown) => peticion<T>(ruta, { method: 'PATCH', cuerpo }),
   delete: <T,>(ruta: string) => peticion<T>(ruta, { method: 'DELETE' }),
+}
+
+/**
+ * Descarga un archivo binario protegido.
+ *
+ * Hace falta porque el access token vive EN MEMORIA, no en una cookie: un
+ * enlace normal o un `window.open()` saldrían sin la cabecera de autorización
+ * y recibirían un 401. Se pide con el cliente —que sí la añade— y se envuelve
+ * el resultado en una URL de objeto que el navegador puede abrir.
+ */
+export async function descargarArchivo(ruta: string): Promise<string> {
+  const respuesta = await fetch(ruta, {
+    credentials: 'include',
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+  })
+
+  if (!respuesta.ok) {
+    const datos = (await respuesta.json().catch(() => null)) as
+      | { error?: { codigo: string; mensaje: string } }
+      | null
+
+    throw new ErrorApi(
+      respuesta.status,
+      datos?.error?.codigo ?? 'ERROR_DESCONOCIDO',
+      datos?.error?.mensaje ?? 'No se pudo abrir el documento',
+    )
+  }
+
+  return URL.createObjectURL(await respuesta.blob())
 }
 
 /**

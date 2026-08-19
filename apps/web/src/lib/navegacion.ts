@@ -48,6 +48,12 @@ export const MENU: EntradaMenu[] = [
     enMovil: true,
   },
   {
+    ruta: '/perfil/firma',
+    etiqueta: 'Mi firma',
+    icono: '✎',
+    permiso: 'prescription:sign',
+  },
+  {
     ruta: '/personal',
     etiqueta: 'Personal',
     icono: '⚇',

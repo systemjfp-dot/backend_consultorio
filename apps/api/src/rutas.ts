@@ -17,6 +17,8 @@ import { rutasCitas } from './modules/citas/citas.routes.js'
 import { rutasEmergencia } from './modules/emergencia/emergencia.routes.js'
 import { rutasInstalacion } from './modules/instalacion/instalacion.routes.js'
 import { rutasPacientes } from './modules/pacientes/pacientes.routes.js'
+import { rutasPerfil } from './modules/perfil/perfil.routes.js'
+import { rutasRecetas } from './modules/recetas/recetas.routes.js'
 import { rutasSalud } from './modules/salud/salud.routes.js'
 
 export interface ModuloDeRutas {
@@ -34,4 +36,6 @@ export const MODULOS_DE_RUTAS: ModuloDeRutas[] = [
   { prefijo: '/api/agenda', router: rutasAgenda },
   { prefijo: '/api/citas', router: rutasCitas },
   { prefijo: '/api/atenciones', router: rutasAtenciones },
+  { prefijo: '/api/recetas', router: rutasRecetas },
+  { prefijo: '/api/perfil', router: rutasPerfil },
 ]

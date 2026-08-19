@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Sistema de gestión de consultorio médico",
+  "description": "Sistema de gesti\u00f3n de consultorio m\u00e9dico",
   "packageManager": "pnpm@10.33.3",
   "engines": {
     "node": ">=22"
@@ -32,7 +32,8 @@
       "@prisma/client",
       "@prisma/engines",
       "esbuild",
-      "prisma"
+      "prisma",
+      "puppeteer"
     ]
   }
 }

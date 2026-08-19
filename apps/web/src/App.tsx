@@ -21,6 +21,7 @@ import { Cargando } from './components/ui/index.js'
 import { Agenda } from './features/agenda/Agenda.js'
 import { FichaAtencion } from './features/atenciones/FichaAtencion.js'
 import { SalaDeEspera } from './features/atenciones/SalaDeEspera.js'
+import { RegistrarFirma } from './features/recetas/RegistrarFirma.js'
 import { FichaPaciente } from './features/pacientes/FichaPaciente.js'
 import { ListaPacientes } from './features/pacientes/ListaPacientes.js'
 import { NuevoPaciente } from './features/pacientes/NuevoPaciente.js'
@@ -189,6 +190,14 @@ function Rutas() {
         />
 
         <Route path="perfil/2fa" element={<ConfigurarDosFactores />} />
+        <Route
+          path="perfil/firma"
+          element={
+            <RutaConPermiso permiso="prescription:sign">
+              <RegistrarFirma />
+            </RutaConPermiso>
+          }
+        />
         <Route path="*" element={<NoEncontrada />} />
       </Route>
     </Routes>

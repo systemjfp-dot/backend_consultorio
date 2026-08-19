@@ -27,6 +27,8 @@ import { Alerta, Boton, Cargando, Tarjeta } from '../../components/ui/index.js'
 import { ErrorApi } from '../../lib/api.js'
 import { useAuth } from '../../lib/auth.js'
 import { useRetraso } from '../../lib/useRetraso.js'
+import { NuevaReceta } from '../recetas/NuevaReceta.js'
+import { RecetasDeLaAtencion } from '../recetas/RecetasDeLaAtencion.js'
 import { BuscadorCie10 } from './BuscadorCie10.js'
 import { completarAtencion, guardarAtencion, obtenerAtencion } from './api.js'
 
@@ -88,6 +90,7 @@ export function FichaAtencion() {
   const [diagnosticos, setDiagnosticos] = useState<CodigoCie10[]>([])
   const [error, setError] = useState<string | null>(null)
   const [guardadoEn, setGuardadoEn] = useState<Date | null>(null)
+  const [recetando, setRecetando] = useState(false)
 
   // Carga inicial del formulario. Solo una vez: después manda el borrador
   // local, o el guardado automático pisaría lo que se está escribiendo.
@@ -435,6 +438,19 @@ export function FichaAtencion() {
           </div>
         </Tarjeta>
 
+        {/* --- Recetas --- */}
+        {can('prescription:create') && (
+          <Tarjeta>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="font-medium text-gray-900">Recetas</h2>
+              <Boton variante="secundario" onClick={() => setRecetando(true)}>
+                Nueva receta
+              </Boton>
+            </div>
+            <RecetasDeLaAtencion atencionId={atencion.id} />
+          </Tarjeta>
+        )}
+
         {/* --- Addenda --- */}
         {atencion.addenda.length > 0 && (
           <Tarjeta>
@@ -453,6 +469,14 @@ export function FichaAtencion() {
           </Tarjeta>
         )}
       </div>
+
+      {recetando && (
+        <NuevaReceta
+          atencionId={atencion.id}
+          onCerrar={() => setRecetando(false)}
+          onEmitida={() => setRecetando(false)}
+        />
+      )}
 
       {/* --- Barra de acciones fija --- */}
       {editable && (
