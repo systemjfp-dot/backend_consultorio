@@ -247,7 +247,9 @@ Marcar citas de alto riesgo para sobreagendar o llamar antes.
 **D1. RENHICE / Ley 30024**
 El Registro Nacional de Historias Clínicas Electrónicas avanza: el reglamento se modificó por **D.S. 020-2025-SA** y el MINSA aprobó el plan de implementación. Los sistemas de HCE deben poder **interoperar con RENHICE** usando los estándares del MINSA, con registros codificados en CIE-10 y firma electrónica por profesional responsable.
 
-**Recomendación pragmática:** no reescribas tu esquema en FHIR (para una clínica sola es sobrecosto puro). Pero **añade un endpoint de exportación FHIR R4** que mapee tus modelos a `Patient`, `Encounter`, `Condition`, `MedicationRequest`, `ServiceRequest`. Son ~2 días si el esquema está limpio, y es lo que te van a pedir. Diseñar los modelos *pensando* en ese mapeo desde ahora no cuesta nada.
+**Recomendación pragmática:** no reescribas tu esquema en FHIR (para una clínica sola es sobrecosto puro).
+
+> **Decidido el 18/08/2026: nada de FHIR, tampoco el endpoint de exportación.** Es un consultorio pequeño y hoy no hay con quién interoperar; construirlo sería trabajo que envejece sin usarse. Lo que sí se mantiene es lo que RENHICE exigiría de todos modos y ya aporta valor por sí solo: diagnósticos codificados en CIE-10, firma del profesional responsable y registro de accesos. Si algún día aparece la obligación real, se hace entonces sobre un esquema limpio.
 
 **D2. NTS 139-MINSA/2018** define los campos obligatorios de la historia clínica. Vale contrastar el modelo `Attendance` contra esa norma antes de codificar: probablemente falten antecedentes (patológicos, familiares, quirúrgicos), examen físico por sistemas y datos de filiación completos.
 
@@ -275,13 +277,13 @@ El documento propone **Fases 1–10 = todo el backend**, luego **Fases 11–18 =
 | **H4** | Recetas + PDF + firma | Se imprime lo que el paciente se lleva |
 | **H5** | Exámenes + PDF | |
 | **H6** | Notificaciones + confirmación por link + lista de espera | Bajan los no-shows |
-| **H7** | Reportes, auditoría, PWA, export FHIR | |
+| **H7** | Reportes, auditoría, PWA | |
 
 Después de **H2 la clínica ya puede usarlo** en paralelo a su método actual. Eso cambia todo: el feedback llega cuando aún es barato corregir.
 
 ### 4.2 MVP recomendado
 
-**H0 → H4.** Auth, pacientes, agenda, atención, receta. Es un sistema que un consultorio usa de verdad. Todo lo demás (portal del paciente, teleconsulta, IA, facturación, FHIR) es incremento sobre una base que ya funciona.
+**H0 → H4.** Auth, pacientes, agenda, atención, receta. Es un sistema que un consultorio usa de verdad. Todo lo demás (portal del paciente, teleconsulta, IA, facturación) es incremento sobre una base que ya funciona.
 
 ### 4.3 Pruebas: no en la Fase 20
 

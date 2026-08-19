@@ -66,7 +66,7 @@ ConsultarioMedico/
 
 ## Convenciones
 
-- **Idioma:** código y comentarios en español para lógica de negocio (`crearCita`, `calcularSlotsDisponibles`); nombres de tablas/campos Prisma en inglés (convención del ORM y del futuro mapeo FHIR).
+- **Idioma:** código y comentarios en español para lógica de negocio (`crearCita`, `calcularSlotsDisponibles`); nombres de tablas/campos Prisma en inglés (convención del ORM).
 - **Fechas:** todo `DateTime` en UTC (`@db.Timestamptz`). Horarios plantilla en **minutos desde medianoche** (`Int`), interpretados en el timezone de `ClinicSettings`. **Una sola** utilidad hace la conversión.
 - **Errores:** clases tipadas (`NotFoundError`, `ForbiddenError`, `ConflictError`, `ValidationError`) + un único middleware que las traduce a HTTP.
 - **Validación:** Zod en el borde (request), siempre. El service recibe datos ya válidos y tipados.
@@ -117,7 +117,9 @@ BullMQ + Redis, recordatorios 24 h, **link firmado de confirmación/cancelación
 **Hecho cuando:** un paciente confirma su cita desde el celular sin iniciar sesión.
 
 ### H7 — Cierre
-Reportes (citas, pacientes) con exportación, panel de auditoría, PWA (lectura offline + borrador local), export FHIR R4, Swagger, despliegue en Railway con backups.
+Reportes (citas, pacientes) con exportación, panel de auditoría, PWA (lectura offline + borrador local), Swagger, despliegue en Railway con backups.
+
+> **FHIR R4 queda fuera del alcance** (decisión del 18/08/2026). Es un consultorio pequeño: el esfuerzo de mapeo no se paga con nadie con quien interoperar. La exportación a Excel cubre lo que hoy se necesita sacar del sistema.
 
 ### Después del MVP (evaluar con el sistema ya en uso)
 Portal de auto-agendamiento · Teleconsulta · Facturación electrónica SUNAT · Escriba clínico con IA · Sugerencia de CIE-10 · Resumen del paciente · Predicción de inasistencia.
