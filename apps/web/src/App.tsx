@@ -19,9 +19,11 @@ import { useState, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Cargando } from './components/ui/index.js'
 import { Agenda } from './features/agenda/Agenda.js'
+import { Auditoria } from './features/auditoria/Auditoria.js'
 import { FichaAtencion } from './features/atenciones/FichaAtencion.js'
 import { SalaDeEspera } from './features/atenciones/SalaDeEspera.js'
 import { RegistrarFirma } from './features/recetas/RegistrarFirma.js'
+import { Reportes } from './features/reportes/Reportes.js'
 import { FichaPaciente } from './features/pacientes/FichaPaciente.js'
 import { ListaPacientes } from './features/pacientes/ListaPacientes.js'
 import { NuevoPaciente } from './features/pacientes/NuevoPaciente.js'
@@ -50,10 +52,12 @@ function crearClienteConsultas() {
       // preferible a mostrar una agenda desactualizada.
       staleTime: 60_000,
       retry: (intentos, error) => {
-        // No tiene sentido reintentar un 401 o un 403: el resultado será el
-        // mismo, y el cliente de API ya se encargó de renovar la sesión.
+        // Ningún error 4xx se reintenta: la petición está mal o no está
+        // autorizada, y repetirla dará exactamente lo mismo mientras el
+        // usuario se queda mirando una pantalla de carga que no va a
+        // resolverse. Solo se reintentan los fallos de red y los 5xx.
         const estado = (error as { estado?: number }).estado
-        if (estado === 401 || estado === 403 || estado === 404) return false
+        if (estado && estado >= 400 && estado < 500) return false
         return intentos < 2
       },
     },
@@ -168,7 +172,7 @@ function Rutas() {
           path="reportes"
           element={
             <RutaConPermiso permiso="report:appointments">
-              <EnConstruccion titulo="Reportes" hito="H7" />
+              <Reportes />
             </RutaConPermiso>
           }
         />
@@ -176,7 +180,7 @@ function Rutas() {
           path="auditoria"
           element={
             <RutaConPermiso permiso="audit:read">
-              <EnConstruccion titulo="Auditoría" hito="H7" />
+              <Auditoria />
             </RutaConPermiso>
           }
         />

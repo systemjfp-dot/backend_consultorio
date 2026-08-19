@@ -20,6 +20,7 @@ import { rutasInstalacion } from './modules/instalacion/instalacion.routes.js'
 import { rutasPacientes } from './modules/pacientes/pacientes.routes.js'
 import { rutasPerfil } from './modules/perfil/perfil.routes.js'
 import { rutasRecetas } from './modules/recetas/recetas.routes.js'
+import { rutasReportes } from './modules/reportes/reportes.routes.js'
 import { rutasSalud } from './modules/salud/salud.routes.js'
 
 export interface ModuloDeRutas {
@@ -39,5 +40,6 @@ export const MODULOS_DE_RUTAS: ModuloDeRutas[] = [
   { prefijo: '/api/atenciones', router: rutasAtenciones },
   { prefijo: '/api/recetas', router: rutasRecetas },
   { prefijo: '/api/examenes', router: rutasExamenes },
+  { prefijo: '/api/reportes', router: rutasReportes },
   { prefijo: '/api/perfil', router: rutasPerfil },
 ]
