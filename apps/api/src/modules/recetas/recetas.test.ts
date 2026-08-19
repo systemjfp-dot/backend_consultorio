@@ -13,6 +13,7 @@ import { crearApp } from '../../app.js'
 import { borrarFirma } from '../../core/almacenamiento.js'
 import { cerrarNavegadorPdf } from '../../core/pdf.js'
 import { prisma } from '../../core/prisma.js'
+import { esperarA } from '../../pruebas/esperar.js'
 import { olvidarConfiguracion } from '../agenda/agenda.service.js'
 import { cifrarContrasena } from '../auth/contrasenas.js'
 
@@ -293,18 +294,20 @@ describe('firma del médico', () => {
 })
 
 describe('firma de la receta y PDF', () => {
-  it('sin firma registrada NO deja firmar', async () => {
-    // Una receta sin firma no la acepta una farmacia: descubrirlo con el
-    // paciente delante es peor que impedirlo aquí.
+  it('sin firma registrada emite igual, para firmar a mano', async () => {
+    // Registrar la firma es una comodidad, no un requisito: firmar el papel a
+    // mano es el flujo de siempre y sigue siendo válido. Bloquear la emisión
+    // dejaría al paciente sin receta por un trámite pendiente del médico.
     const id = await crearReceta()
 
     const res = await request(app)
       .post(`/api/recetas/${id}/firmar`)
       .set(await sesion(MEDICO_A))
 
-    expect(res.status).toBe(409)
-    expect(res.body.error.mensaje).toContain('firma registrada')
-  })
+    expect(res.status).toBe(200)
+    expect(res.body.receta.tipoFirma).toBe('HANDWRITTEN')
+    expect(res.body.receta.tienePdf).toBe(true)
+  }, 30_000)
 
   it('con firma registrada genera el PDF y guarda su hash', async () => {
     await registrarFirma()
@@ -316,6 +319,7 @@ describe('firma de la receta y PDF', () => {
 
     expect(res.status).toBe(200)
     expect(res.body.receta.firmadaEn).toBeTruthy()
+    expect(res.body.receta.tipoFirma).toBe('DRAWN')
     // SHA-256 en hexadecimal: lo que permite demostrar que el documento
     // entregado no fue alterado.
     expect(res.body.receta.hashPdf).toMatch(/^[a-f0-9]{64}$/)
@@ -401,9 +405,13 @@ describe('firma de la receta y PDF', () => {
     await request(app).post(`/api/recetas/${id}/firmar`).set(await sesion(MEDICO_A))
     await request(app).get(`/api/recetas/${id}/pdf`).set(await sesion(RECEPCION))
 
-    const registro = await prisma.auditLog.findFirst({
-      where: { entity: 'Prescription', entityId: id, action: 'PRINT' },
-    })
+    // La auditoría se escribe después de responder, así que se espera a que
+    // aparezca en vez de leerla una sola vez y perder la carrera.
+    const registro = await esperarA(() =>
+      prisma.auditLog.findFirst({
+        where: { entity: 'Prescription', entityId: id, action: 'PRINT' },
+      }),
+    )
     expect(registro?.userEmail).toBe(RECEPCION)
   }, 30_000)
 })

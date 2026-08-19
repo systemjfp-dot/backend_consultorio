@@ -80,6 +80,18 @@ export async function cerrarNavegadorPdf(): Promise<void> {
   await instancia?.close().catch(() => undefined)
 }
 
+/**
+ * Escribe la colegiatura como "CMP 45821" venga como venga del perfil.
+ *
+ * Unos médicos la registran como "45821", otros como "CMP-45821" y otros como
+ * "C.M.P. 45821". Anteponer el prefijo sin mirar imprimía "CMP CMP-45821" en
+ * el papel que se lleva el paciente.
+ */
+export function formatearColegiatura(valor: string | null | undefined): string {
+  const numero = (valor ?? '').trim().replace(/^c\.?\s*m\.?\s*p\.?\s*[-–—:]?\s*/i, '')
+  return numero ? `CMP ${numero}` : ''
+}
+
 /** Escapa texto que va dentro del HTML de una plantilla. */
 export function escaparHtml(texto: string | null | undefined): string {
   if (!texto) return ''

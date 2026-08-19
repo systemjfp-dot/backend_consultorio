@@ -258,9 +258,9 @@ describe('PDF de la orden', () => {
   }, 30_000)
 
   it('el PDF se emite aunque el médico no tenga firma', async () => {
-    // A diferencia de la receta, una orden de examen sin firma sigue siendo
-    // útil: el laboratorio necesita saber qué hacer, y bloquearla dejaría al
-    // paciente sin el papel por un trámite del médico.
+    // Igual que la receta: el documento se emite con el espacio en blanco y
+    // el médico lo firma a mano. Bloquearlo dejaría al paciente sin el papel
+    // por un trámite del médico.
     const { ordenId } = await ordenar()
 
     const res = await request(app)

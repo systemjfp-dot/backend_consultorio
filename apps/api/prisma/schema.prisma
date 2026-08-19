@@ -630,8 +630,12 @@ model AttendanceAddendum {
 // =============================================================================
 
 enum SignatureType {
-  /// Imagen de firma registrada en el perfil del médico.
+  /// Imagen de firma registrada en el perfil del médico, incrustada en el PDF.
   DRAWN
+  /// El médico firma el papel a mano. El PDF se emite con el espacio en blanco.
+  /// Es un flujo legítimo y frecuente: registrar la firma es una comodidad,
+  /// no un requisito para poder recetar.
+  HANDWRITTEN
   /// Firma electrónica con certificado digital (D.S. 098-2025-PCM).
   CERTIFICATE
 }

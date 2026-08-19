@@ -15,6 +15,7 @@ import {
 } from '@consultorio/shared'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Alerta, Boton, Campo } from '../../components/ui/index.js'
 import { Modal } from '../agenda/Modal.js'
 import { ErrorApi } from '../../lib/api.js'
@@ -93,9 +94,13 @@ export function NuevaReceta({
         {error && <Alerta>{error}</Alerta>}
 
         {firma.data && !firma.data.registrada && (
-          <Alerta tono="aviso">
-            No tienes una firma registrada. Regístrala en tu perfil antes de emitir recetas: una
-            receta sin firma no la acepta una farmacia.
+          <Alerta tono="info">
+            No tienes una firma registrada: la receta saldrá con el espacio en blanco para que la
+            firmes a mano. Si prefieres que salga ya firmada, regístrala en{' '}
+            <Link to="/perfil/firma" className="font-medium underline underline-offset-2">
+              Mi firma
+            </Link>
+            .
           </Alerta>
         )}
 
@@ -211,7 +216,7 @@ export function NuevaReceta({
               setError(null)
               emitir.mutate()
             }}
-            disabled={!listo || firma.data?.registrada === false}
+            disabled={!listo}
             cargando={emitir.isPending}
           >
             Emitir e imprimir
@@ -222,8 +227,8 @@ export function NuevaReceta({
         </div>
 
         <p className="text-xs text-gray-500">
-          Al emitir se firma con tu firma registrada y se genera el PDF, que se abre en una pestaña
-          nueva listo para imprimir.
+          Al emitir se genera el PDF y se abre en una pestaña nueva, listo para imprimir. Si tienes
+          firma registrada sale ya firmado; si no, con espacio para firmarlo a mano.
         </p>
       </div>
     </Modal>

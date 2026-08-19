@@ -5,6 +5,9 @@
  * proponía dibujarla en cada una; repetir el trazo veinte veces al día en una
  * tablet es fricción pura, y además obligaba a guardar una imagen por receta.
  *
+ * ES OPCIONAL. Quien prefiera imprimir y firmar a mano no necesita registrar
+ * nada: el documento sale con el espacio en blanco sobre la línea.
+ *
  * ADVERTENCIA QUE CONVIENE NO PERDER DE VISTA: esto es un dibujo, no una firma
  * electrónica. El D.S. 098-2025-PCM y la Directiva MINSA 343-2023 empujan
  * hacia el certificado digital para documentos de salud. El modelo de datos ya
@@ -109,7 +112,8 @@ export function RegistrarFirma() {
     <div className="mx-auto max-w-2xl">
       <h1 className="mb-1 text-xl font-semibold text-gray-900">Mi firma</h1>
       <p className="mb-4 text-sm text-gray-600">
-        Se dibuja una sola vez y aparece en todas tus recetas.
+        Se dibuja una sola vez y aparece en todas tus recetas y órdenes. Es opcional: sin ella los
+        documentos salen con el espacio en blanco para firmarlos a mano.
       </p>
 
       {error && (

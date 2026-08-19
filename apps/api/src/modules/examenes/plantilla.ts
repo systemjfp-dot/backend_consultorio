@@ -10,7 +10,7 @@
  * escanearla para abrirla en lugar de teclear un número a mano.
  */
 
-import { escaparHtml } from '../../core/pdf.js'
+import { escaparHtml, formatearColegiatura } from '../../core/pdf.js'
 
 export interface DatosPlantillaExamen {
   clinica: { nombre: string; ruc: string; direccion: string; telefono: string; logoUrl: string | null }
@@ -232,10 +232,15 @@ export function plantillaExamen(datos: DatosPlantillaExamen): string {
   }
 
   <div class="firma">
-    ${datos.firmaDataUrl ? `<img src="${datos.firmaDataUrl}" alt="">` : '<div style="height:56px"></div>'}
+    ${
+      datos.firmaDataUrl
+        ? `<img src="${datos.firmaDataUrl}" alt="">`
+        : // Sin firma registrada, hueco para firmar a mano sobre la línea.
+          '<div style="height:74px"></div>'
+    }
     <div class="linea"></div>
     <div class="nombre">${e(datos.medico.nombre)}</div>
-    <div class="datos">${e(datos.medico.especialidad)}<br>CMP ${e(datos.medico.colegiatura)}</div>
+    <div class="datos">${e(datos.medico.especialidad)}<br>${e(formatearColegiatura(datos.medico.colegiatura))}</div>
   </div>
 
   <div class="pie">

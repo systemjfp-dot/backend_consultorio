@@ -3,6 +3,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { crearApp } from '../../app.js'
 import { asegurarParticionesAuditoria, estadoParticiones } from '../../core/auditoria.js'
 import { prisma } from '../../core/prisma.js'
+import { esperarA, margenParaEscrituraDiferida } from '../../pruebas/esperar.js'
 import { cifrarContrasena } from '../auth/contrasenas.js'
 
 const app = crearApp()
@@ -11,9 +12,6 @@ const CONTRASENA = 'Clinica2026!'
 const EMAIL_AUDITOR = 'auditor.panel@consultorio.test'
 const EMAIL_MEDICO = 'medico.panel@consultorio.test'
 const EMAIL_RECEPCION = 'recepcion.panel@consultorio.test'
-
-/** Espera a que se escriban las auditorías diferidas del evento `finish`. */
-const esperarAuditoriaDiferida = () => new Promise((r) => setTimeout(r, 120))
 
 async function limpiar() {
   const usuarios = await prisma.user.findMany({
@@ -145,11 +143,13 @@ describe('la propia consulta de auditoría se audita', () => {
     })
 
     await consultar(EMAIL_AUDITOR)
-    await esperarAuditoriaDiferida()
 
-    const despues = await prisma.auditLog.count({
-      where: { entity: 'AuditLog', action: 'VIEW' },
-    })
+    // La auditoría se escribe tras responder: se reintenta hasta verla en vez
+    // de dormir un tiempo fijo que en una máquina cargada se queda corto.
+    const despues = await esperarA(
+      () => prisma.auditLog.count({ where: { entity: 'AuditLog', action: 'VIEW' } }),
+      (cuantos) => cuantos > antes,
+    )
     expect(despues).toBeGreaterThan(antes)
 
     const registro = await prisma.auditLog.findFirstOrThrow({
@@ -168,7 +168,7 @@ describe('la propia consulta de auditoría se audita', () => {
     })
 
     await consultar(EMAIL_RECEPCION)
-    await esperarAuditoriaDiferida()
+    await margenParaEscrituraDiferida()
 
     const despues = await prisma.auditLog.count({
       where: { entity: 'AuditLog', action: 'VIEW' },

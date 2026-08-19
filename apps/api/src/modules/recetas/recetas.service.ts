@@ -6,6 +6,12 @@
  * registra una vez en su perfil y se reutiliza. Además de quitar fricción en
  * cada consulta, evita almacenar una imagen por receta.
  *
+ * Y REGISTRARLA ES OPCIONAL. Muchos médicos imprimen la receta y la firman a
+ * mano, que es un flujo perfectamente válido. Si no hay firma registrada, el
+ * PDF sale con el espacio en blanco sobre la línea y se marca como
+ * HANDWRITTEN. Exigirla dejaría al paciente sin su receta por un trámite
+ * pendiente del médico.
+ *
  * Y una advertencia que conviene tener presente: una firma dibujada NO es una
  * firma electrónica. El D.S. 098-2025-PCM y la Directiva MINSA 343-2023
  * empujan hacia el certificado digital para documentos de salud. El modelo ya
@@ -26,7 +32,7 @@ import {
 } from '@consultorio/shared'
 import type { Prisma } from '@prisma/client'
 import { registrarAuditoria } from '../../core/auditoria.js'
-import { firmaComoDataUrl, guardarPdf, hayFirma, hayPdf, leerPdf } from '../../core/almacenamiento.js'
+import { firmaComoDataUrl, guardarPdf, hayPdf, leerPdf } from '../../core/almacenamiento.js'
 import type { ContextoAuth } from '../../core/contexto.js'
 import { ErrorConflicto, ErrorNoEncontrado, ErrorProhibido } from '../../core/errores.js'
 import { htmlAPdf } from '../../core/pdf.js'
@@ -194,11 +200,11 @@ export async function crear(
 // --- Firma y PDF -------------------------------------------------------------
 
 /**
- * Firma la receta y genera su PDF.
+ * Emite la receta y genera su PDF.
  *
- * Exige que el médico tenga firma registrada: una receta sin firma no la
- * acepta una farmacia, y descubrirlo con el paciente delante es peor que
- * impedirlo aquí.
+ * Si el médico tiene firma registrada, se incrusta. Si no, el documento sale
+ * con el espacio en blanco para que la firme a mano — y queda registrado como
+ * tal, de modo que después se sepa cómo se firmó cada receta.
  */
 export async function firmarYGenerarPdf(
   ctx: ContextoAuth,
@@ -214,12 +220,6 @@ export async function firmarYGenerarPdf(
     // Nadie firma por otro. Ni siquiera un administrador que además sea
     // médico: la firma identifica a quien se responsabiliza de la receta.
     throw new ErrorProhibido('Solo el médico que la emitió puede firmar esta receta')
-  }
-
-  if (!hayFirma(fila.doctorId)) {
-    throw new ErrorConflicto(
-      'No tienes una firma registrada. Regístrala en tu perfil antes de emitir recetas.',
-    )
   }
 
   const [ajustes, firma] = await Promise.all([
@@ -284,7 +284,9 @@ export async function firmarYGenerarPdf(
     where: { id },
     data: {
       signedAt: new Date(),
-      signatureType: 'DRAWN',
+      // Queda constancia de CÓMO se firmó: con la imagen registrada, o en
+      // papel a mano.
+      signatureType: firma ? 'DRAWN' : 'HANDWRITTEN',
       pdfHash: hash,
       pdfUrl: `/api/recetas/${id}/pdf`,
     },
@@ -299,7 +301,7 @@ export async function firmarYGenerarPdf(
     usuarioEmail: ctx.email,
     roles: ctx.roles,
     permiso: 'prescription:sign',
-    motivo: 'receta firmada y PDF emitido',
+    motivo: firma ? 'receta firmada y PDF emitido' : 'receta emitida para firma manuscrita',
     ip: cliente.ip,
     userAgent: cliente.userAgent,
   })

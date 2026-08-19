@@ -79,7 +79,15 @@ export const esquemaFirma = z.object({
 
 // --- Respuestas --------------------------------------------------------------
 
-export type TipoFirma = 'DRAWN' | 'CERTIFICATE'
+/**
+ * Cómo se firmó la receta.
+ *
+ * - `DRAWN`: con la imagen de firma que el médico registró en su perfil.
+ * - `HANDWRITTEN`: el PDF salió con el espacio en blanco y se firma en papel.
+ *   Registrar la firma es una comodidad, no un requisito para recetar.
+ * - `CERTIFICATE`: firma electrónica con certificado digital.
+ */
+export type TipoFirma = 'DRAWN' | 'HANDWRITTEN' | 'CERTIFICATE'
 
 export interface Medicamento extends DatosMedicamento {
   id: string

@@ -138,17 +138,23 @@ describe('emisión de receta', () => {
     return { usuario, modal: within(screen.getByRole('dialog')) }
   }
 
-  it('avisa si el médico no tiene firma registrada', async () => {
-    // Una receta sin firma no la acepta una farmacia: mejor saberlo antes de
-    // escribirla que con el paciente esperando.
+  it('sin firma registrada avisa, pero deja emitir para firmar a mano', async () => {
+    // Firmar el papel a mano es un flujo válido y frecuente. El aviso explica
+    // cómo saldrá el documento; bloquear el botón dejaría al paciente sin su
+    // receta por un trámite pendiente del médico.
     simularApi({ ...RUTAS_BASE, '/api/perfil/firma': { cuerpo: { registrada: false } } })
 
-    const { modal } = await abrirModal()
+    const { usuario, modal } = await abrirModal()
 
-    expect(await modal.findByText(/No tienes una firma registrada/)).toBeDefined()
+    expect(await modal.findByText(/espacio en blanco para que la firmes a mano/)).toBeDefined()
+
+    await usuario.click(modal.getByRole('button', { name: 'Añadir medicamento' }))
+    await usuario.type(modal.getByLabelText('Buscar medicamento'), 'amoxi')
+    await usuario.click(await modal.findByRole('button', { name: /Amoxicilina/ }))
+
     expect(modal.getByRole('button', { name: 'Emitir e imprimir' })).toHaveProperty(
       'disabled',
-      true,
+      false,
     )
   })
 
@@ -262,6 +268,14 @@ describe('registro de firma', () => {
 
     expect(await screen.findByText(/una sola vez y aparece en todas tus recetas/)).toBeDefined()
     expect(screen.getByLabelText('Área para dibujar la firma')).toBeDefined()
+  })
+
+  it('deja claro que registrarla es opcional', async () => {
+    // Quien imprime y firma a mano no necesita hacer nada aquí.
+    simularApi({ '/api/perfil/firma': { cuerpo: { registrada: false } } })
+    render(<App />)
+
+    expect(await screen.findByText(/Es opcional/)).toBeDefined()
   })
 
   it('avisa de que reemplaza la firma anterior', async () => {

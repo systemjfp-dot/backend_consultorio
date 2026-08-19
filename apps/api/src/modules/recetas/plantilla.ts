@@ -11,7 +11,7 @@
  * una receta a la que le falte uno no la acepta una farmacia.
  */
 
-import { escaparHtml } from '../../core/pdf.js'
+import { escaparHtml, formatearColegiatura } from '../../core/pdf.js'
 
 export interface DatosPlantillaReceta {
   clinica: { nombre: string; ruc: string; direccion: string; telefono: string; logoUrl: string | null }
@@ -225,12 +225,18 @@ export function plantillaReceta(datos: DatosPlantillaReceta): string {
   }
 
   <div class="firma">
-    ${datos.firmaDataUrl ? `<img src="${datos.firmaDataUrl}" alt="">` : '<div style="height:58px"></div>'}
+    ${
+      datos.firmaDataUrl
+        ? `<img src="${datos.firmaDataUrl}" alt="">`
+        : // Sin firma registrada se deja hueco para firmar a mano. Algo más
+          // alto que la imagen: una firma manuscrita necesita sitio.
+          '<div style="height:74px"></div>'
+    }
     <div class="linea"></div>
     <div class="nombre">${e(datos.medico.nombre)}</div>
     <div class="datos">
       ${e(datos.medico.especialidad)}<br>
-      CMP ${e(datos.medico.colegiatura)}${datos.medico.registroEspecialista ? ` · RNE ${e(datos.medico.registroEspecialista)}` : ''}
+      ${e(formatearColegiatura(datos.medico.colegiatura))}${datos.medico.registroEspecialista ? ` · RNE ${e(datos.medico.registroEspecialista)}` : ''}
     </div>
   </div>
 
