@@ -15,8 +15,21 @@ import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { ErrorPeticion } from './errores.js'
+import { claveActiva } from './prisma.js'
 
 const RAIZ = resolve(process.env['STORAGE_DIR'] ?? 'storage')
+
+/**
+ * Carpeta del consultorio que se está atendiendo.
+ *
+ * Con varios consultorios en un mismo despliegue, sus firmas y PDF no pueden
+ * compartir carpeta: los nombres de archivo son identificadores de la base, y
+ * dos bases distintas pueden generar el mismo. Uno sobrescribiría la receta
+ * del otro.
+ */
+function raizDelConsultorio(): string {
+  return join(RAIZ, claveActiva())
+}
 
 /** Solo caracteres de un cuid o un uuid. Nada de separadores de ruta. */
 const IDENTIFICADOR_VALIDO = /^[A-Za-z0-9_-]{1,64}$/
@@ -26,11 +39,12 @@ function rutaSegura(carpeta: string, identificador: string, extension: string): 
     throw new ErrorPeticion('Identificador de archivo inválido')
   }
 
-  const ruta = join(RAIZ, carpeta, `${identificador}.${extension}`)
+  const raiz = raizDelConsultorio()
+  const ruta = join(raiz, carpeta, `${identificador}.${extension}`)
 
   // Cinturón y tirantes: aunque la expresión regular ya lo impide, se
-  // comprueba que el resultado siga dentro de la raíz.
-  if (!resolve(ruta).startsWith(RAIZ)) {
+  // comprueba que el resultado siga dentro de la raíz del consultorio.
+  if (!resolve(ruta).startsWith(raiz)) {
     throw new ErrorPeticion('Ruta de archivo inválida')
   }
 
@@ -74,6 +88,17 @@ export async function firmaComoDataUrl(medicoId: string): Promise<string | null>
 }
 
 // --- PDFs --------------------------------------------------------------------
+
+/**
+ * Dónde queda un PDF en disco.
+ *
+ * Se expone porque el layout dejó de ser evidente desde fuera: con varios
+ * consultorios hay una carpeta por cada uno, y quien quiera comprobar el
+ * archivo —las pruebas, un respaldo— no debería tener que adivinarlo.
+ */
+export function rutaDePdf(carpeta: string, id: string): string {
+  return rutaSegura(carpeta, id, 'pdf')
+}
 
 export async function guardarPdf(carpeta: string, id: string, contenido: Buffer): Promise<string> {
   const ruta = rutaSegura(carpeta, id, 'pdf')

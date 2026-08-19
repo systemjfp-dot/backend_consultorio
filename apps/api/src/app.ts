@@ -15,6 +15,7 @@ import { pinoHttp } from 'pino-http'
 import { env, esProduccion } from './config/env.js'
 import { logger } from './core/logger.js'
 import { cargarSesion } from './middleware/autenticar.js'
+import { resolverConsultorio } from './middleware/consultorio.js'
 import { manejadorErrores, manejadorNoEncontrado } from './middleware/errores.js'
 import { limiteGeneral } from './middleware/limites.js'
 import { MODULOS_DE_RUTAS } from './rutas.js'
@@ -82,6 +83,10 @@ export function crearApp(): Express {
   app.use(express.json({ limit: '1mb' }))
   app.use(express.urlencoded({ extended: true, limit: '1mb' }))
   app.use(cookieParser())
+
+  // --- Consultorio ----------------------------------------------------------
+  // Antes que la sesión: cargarla ya consulta la base, y hay que saber cuál.
+  app.use(resolverConsultorio)
 
   // --- Sesión ---------------------------------------------------------------
   // Va ANTES del límite de peticiones a propósito: así el límite general puede

@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs'
 import request from 'supertest'
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { crearApp } from '../../app.js'
-import { borrarFirma } from '../../core/almacenamiento.js'
+import { borrarFirma, rutaDePdf } from '../../core/almacenamiento.js'
 import { cerrarNavegadorPdf } from '../../core/pdf.js'
 import { prisma } from '../../core/prisma.js'
 import { esperarA } from '../../pruebas/esperar.js'
@@ -354,7 +354,7 @@ describe('firma de la receta y PDF', () => {
     const res = await request(app).post(`/api/recetas/${id}/firmar`).set(await sesion(MEDICO_A))
 
     const { createHash } = await import('node:crypto')
-    const contenido = readFileSync(`storage/recetas/${id}.pdf`)
+    const contenido = readFileSync(rutaDePdf('recetas', id))
     const calculado = createHash('sha256').update(contenido).digest('hex')
 
     expect(calculado).toBe(res.body.receta.hashPdf)

@@ -159,59 +159,194 @@ const EXAMENES: { type: 'LABORATORY' | 'IMAGING' | 'SPECIAL' | 'OTHER'; name: st
 //  Personas
 // =============================================================================
 
-const MEDICOS = [
-  {
-    email: 'ana.ruiz@clinica.demo',
-    nombres: 'Ana',
-    apellidos: 'Ruiz Delgado',
-    colegiatura: 'CMP-45821',
-    especialidad: 'Cardiología',
-    color: '#2563EB',
-    minutos: 20,
-    // Mañanas de lunes a viernes.
-    horarios: [
-      { dia: 1, inicio: 480, fin: 780 },
-      { dia: 2, inicio: 480, fin: 780 },
-      { dia: 3, inicio: 480, fin: 780 },
-      { dia: 4, inicio: 480, fin: 780 },
-      { dia: 5, inicio: 480, fin: 780 },
+/**
+ * PERFILES DE CONSULTORIO
+ *
+ * Un mismo despliegue puede atender a varios consultorios independientes, cada
+ * uno con su base de datos (ver `src/config/consultorios.ts`). El seed siembra
+ * UNO, el que se elija con `SEED_PERFIL`. Los correos llevan el dominio del
+ * consultorio a propósito: con dos juegos de cuentas de prueba a la vez, unos
+ * correos iguales serían una fuente permanente de confusión sobre en cuál se
+ * está trabajando.
+ */
+
+interface Horario {
+  dia: number
+  inicio: number
+  fin: number
+}
+
+interface DatosMedico {
+  usuario: string
+  nombres: string
+  apellidos: string
+  colegiatura: string
+  especialidad: string
+  color: string
+  minutos: number
+  horarios: Horario[]
+}
+
+interface Perfil {
+  clinica: { nombre: string; ruc: string; direccion: string; telefono: string }
+  /** Dominio de los correos de las cuentas de prueba. */
+  dominio: string
+  sedes: { nombre: string; direccion: string; telefono: string }[]
+  /** El dueño: administra y además atiende. */
+  director: { usuario: string; nombres: string; apellidos: string; colegiatura: string; especialidad: string }
+  administrador: { usuario: string; nombres: string; apellidos: string }
+  recepcion: { usuario: string; nombres: string; apellidos: string }
+  enfermeria: { usuario: string; nombres: string; apellidos: string }
+  medicos: DatosMedico[]
+}
+
+const PERFILES: Record<string, Perfil> = {
+  sanrafael: {
+    clinica: {
+      nombre: 'Centro Médico San Rafael',
+      ruc: '20512345678',
+      direccion: 'Av. Larco 1234, Miraflores, Lima',
+      telefono: '(01) 445-6789',
+    },
+    dominio: 'clinica.demo',
+    sedes: [
+      { nombre: 'Sede Miraflores', direccion: 'Av. Larco 1234, Miraflores', telefono: '(01) 445-6789' },
+      { nombre: 'Sede San Isidro', direccion: 'Av. Javier Prado 456, San Isidro', telefono: '(01) 221-3344' },
+    ],
+    administrador: { usuario: 'admin', nombres: 'Elena', apellidos: 'Vásquez Ramos' },
+    recepcion: { usuario: 'recepcion', nombres: 'Rosa', apellidos: 'Díaz Molina' },
+    enfermeria: { usuario: 'enfermeria', nombres: 'Julia', apellidos: 'Ccahuana Pari' },
+    director: {
+      usuario: 'director',
+      nombres: 'Fernando',
+      apellidos: 'Alarcón Ríos',
+      colegiatura: 'CMP-29014',
+      especialidad: 'Medicina Interna',
+    },
+    medicos: [
+      {
+        usuario: 'ana.ruiz',
+        nombres: 'Ana',
+        apellidos: 'Ruiz Delgado',
+        colegiatura: 'CMP-45821',
+        especialidad: 'Cardiología',
+        color: '#2563EB',
+        minutos: 20,
+        // Mañanas de lunes a viernes.
+        horarios: [
+          { dia: 1, inicio: 480, fin: 780 },
+          { dia: 2, inicio: 480, fin: 780 },
+          { dia: 3, inicio: 480, fin: 780 },
+          { dia: 4, inicio: 480, fin: 780 },
+          { dia: 5, inicio: 480, fin: 780 },
+        ],
+      },
+      {
+        usuario: 'carlos.mendoza',
+        nombres: 'Carlos',
+        apellidos: 'Mendoza Vargas',
+        colegiatura: 'CMP-38104',
+        especialidad: 'Pediatría',
+        color: '#10B981',
+        minutos: 15,
+        // Tardes, con los lunes y miércoles en la otra sede.
+        horarios: [
+          { dia: 1, inicio: 840, fin: 1200 },
+          { dia: 2, inicio: 840, fin: 1200 },
+          { dia: 3, inicio: 840, fin: 1200 },
+          { dia: 4, inicio: 840, fin: 1200 },
+          { dia: 6, inicio: 540, fin: 780 },
+        ],
+      },
+      {
+        usuario: 'lucia.paredes',
+        nombres: 'Lucía',
+        apellidos: 'Paredes Soto',
+        colegiatura: 'CMP-51937',
+        especialidad: 'Medicina General',
+        color: '#8B5CF6',
+        minutos: 20,
+        // Turno partido: mañana y noche el mismo día, sin superponerse.
+        horarios: [
+          { dia: 1, inicio: 540, fin: 780 },
+          { dia: 1, inicio: 1080, fin: 1260 },
+          { dia: 3, inicio: 540, fin: 780 },
+          { dia: 3, inicio: 1080, fin: 1260 },
+          { dia: 5, inicio: 540, fin: 780 },
+        ],
+      },
     ],
   },
-  {
-    email: 'carlos.mendoza@clinica.demo',
-    nombres: 'Carlos',
-    apellidos: 'Mendoza Vargas',
-    colegiatura: 'CMP-38104',
-    especialidad: 'Pediatría',
-    color: '#10B981',
-    minutos: 15,
-    // Tardes, con los lunes y miércoles en la otra sede.
-    horarios: [
-      { dia: 1, inicio: 840, fin: 1200 },
-      { dia: 2, inicio: 840, fin: 1200 },
-      { dia: 3, inicio: 840, fin: 1200 },
-      { dia: 4, inicio: 840, fin: 1200 },
-      { dia: 6, inicio: 540, fin: 780 },
+
+  sansantiago: {
+    clinica: {
+      nombre: 'Consultorio San Santiago',
+      ruc: '20487654321',
+      direccion: 'Av. Angamos Este 890, Surquillo, Lima',
+      telefono: '(01) 372-1188',
+    },
+    dominio: 'sansantiago.demo',
+    sedes: [
+      { nombre: 'Sede Surquillo', direccion: 'Av. Angamos Este 890, Surquillo', telefono: '(01) 372-1188' },
+    ],
+    administrador: { usuario: 'admin', nombres: 'Marisol', apellidos: 'Huamán Ticona' },
+    recepcion: { usuario: 'recepcion', nombres: 'Cecilia', apellidos: 'Bravo Ninahuanca' },
+    enfermeria: { usuario: 'enfermeria', nombres: 'Nancy', apellidos: 'Apaza Choque' },
+    director: {
+      usuario: 'director',
+      nombres: 'Santiago',
+      apellidos: 'Ferreyra Loayza',
+      colegiatura: 'CMP-31702',
+      especialidad: 'Medicina Familiar',
+    },
+    medicos: [
+      {
+        usuario: 'pilar.andrade',
+        nombres: 'Pilar',
+        apellidos: 'Andrade Cornejo',
+        colegiatura: 'CMP-60418',
+        especialidad: 'Ginecología',
+        color: '#DB2777',
+        minutos: 30,
+        // Mañanas largas tres días por semana.
+        horarios: [
+          { dia: 1, inicio: 480, fin: 840 },
+          { dia: 3, inicio: 480, fin: 840 },
+          { dia: 5, inicio: 480, fin: 840 },
+        ],
+      },
+      {
+        usuario: 'raul.ibanez',
+        nombres: 'Raúl',
+        apellidos: 'Ibáñez Quiroz',
+        colegiatura: 'CMP-27395',
+        especialidad: 'Traumatología',
+        color: '#F59E0B',
+        minutos: 20,
+        // Tardes de martes a viernes.
+        horarios: [
+          { dia: 2, inicio: 900, fin: 1200 },
+          { dia: 3, inicio: 900, fin: 1200 },
+          { dia: 4, inicio: 900, fin: 1200 },
+          { dia: 5, inicio: 900, fin: 1200 },
+        ],
+      },
     ],
   },
-  {
-    email: 'lucia.paredes@clinica.demo',
-    nombres: 'Lucía',
-    apellidos: 'Paredes Soto',
-    colegiatura: 'CMP-51937',
-    especialidad: 'Medicina General',
-    color: '#8B5CF6',
-    minutos: 20,
-    // Turno partido: mañana y noche el mismo día, sin superponerse.
-    horarios: [
-      { dia: 1, inicio: 540, fin: 780 },
-      { dia: 1, inicio: 1080, fin: 1260 },
-      { dia: 3, inicio: 540, fin: 780 },
-      { dia: 3, inicio: 1080, fin: 1260 },
-      { dia: 5, inicio: 540, fin: 780 },
-    ],
-  },
-]
+}
+
+const NOMBRE_PERFIL = process.env['SEED_PERFIL'] ?? 'sanrafael'
+const PERFIL = PERFILES[NOMBRE_PERFIL]
+
+if (!PERFIL) {
+  console.error(
+    `\n  No existe el perfil "${NOMBRE_PERFIL}".\n  Disponibles: ${Object.keys(PERFILES).join(', ')}\n`,
+  )
+  process.exit(1)
+}
+
+/** Correo de una cuenta en el dominio de este consultorio. */
+const correo = (usuario: string): string => `${usuario}@${PERFIL.dominio}`
 
 const PACIENTES = [
   { doc: '43215678', nom: 'María', ape: 'Quispe Huamán', nac: '1978-03-14', gen: 'F', tel: '987654321', alergias: 'Penicilina' },
@@ -272,7 +407,7 @@ async function limpiar() {
 }
 
 async function principal() {
-  console.log('\n  Generando datos de ejemplo...\n')
+  console.log(`\n  Generando datos de ejemplo — ${PERFIL.clinica.nombre}...\n`)
 
   await limpiar()
 
@@ -282,11 +417,11 @@ async function principal() {
     update: {},
     create: {
       id: 1,
-      name: 'Centro Médico San Rafael',
-      ruc: '20512345678',
-      address: 'Av. Larco 1234, Miraflores, Lima',
-      phone: '(01) 445-6789',
-      email: 'contacto@sanrafael.demo',
+      name: PERFIL.clinica.nombre,
+      ruc: PERFIL.clinica.ruc,
+      address: PERFIL.clinica.direccion,
+      phone: PERFIL.clinica.telefono,
+      email: correo('contacto'),
       timezone: 'America/Lima',
       defaultSlotMinutes: 20,
     },
@@ -301,22 +436,27 @@ async function principal() {
   )
 
   // --- Sedes ----------------------------------------------------------------
-  const sedeMiraflores = await prisma.location.create({
-    data: { name: 'Sede Miraflores', address: 'Av. Larco 1234, Miraflores', phone: '(01) 445-6789' },
-  })
-  const sedeSanIsidro = await prisma.location.create({
-    data: { name: 'Sede San Isidro', address: 'Av. Javier Prado 456, San Isidro', phone: '(01) 221-3344' },
-  })
+  const sedes = []
+  for (const sede of PERFIL.sedes) {
+    sedes.push(
+      await prisma.location.create({
+        data: { name: sede.nombre, address: sede.direccion, phone: sede.telefono },
+      }),
+    )
+  }
+  // Un consultorio con un solo local reparte todo en él: `sedes[1] ?? sedes[0]`.
+  const sedePrincipal = sedes[0]!
+  const sedeSecundaria = sedes[1] ?? sedes[0]!
 
   const contrasena = await cifrarContrasena(CONTRASENA)
 
   // --- Personal --------------------------------------------------------------
   await prisma.user.create({
     data: {
-      email: 'admin@clinica.demo',
+      email: correo(PERFIL.administrador.usuario),
       password: contrasena,
-      firstName: 'Elena',
-      lastName: 'Vásquez Ramos',
+      firstName: PERFIL.administrador.nombres,
+      lastName: PERFIL.administrador.apellidos,
       phone: '999111222',
       roles: ['ADMIN'],
     },
@@ -324,10 +464,10 @@ async function principal() {
 
   await prisma.user.create({
     data: {
-      email: 'recepcion@clinica.demo',
+      email: correo(PERFIL.recepcion.usuario),
       password: contrasena,
-      firstName: 'Rosa',
-      lastName: 'Díaz Molina',
+      firstName: PERFIL.recepcion.nombres,
+      lastName: PERFIL.recepcion.apellidos,
       phone: '999333444',
       roles: ['RECEPTIONIST'],
     },
@@ -335,10 +475,10 @@ async function principal() {
 
   await prisma.user.create({
     data: {
-      email: 'enfermeria@clinica.demo',
+      email: correo(PERFIL.enfermeria.usuario),
       password: contrasena,
-      firstName: 'Julia',
-      lastName: 'Ccahuana Pari',
+      firstName: PERFIL.enfermeria.nombres,
+      lastName: PERFIL.enfermeria.apellidos,
       phone: '999555666',
       roles: ['NURSE'],
     },
@@ -348,16 +488,16 @@ async function principal() {
   // rol único del diseño original no permitía representar.
   const directorMedico = await prisma.user.create({
     data: {
-      email: 'director@clinica.demo',
+      email: correo(PERFIL.director.usuario),
       password: contrasena,
-      firstName: 'Fernando',
-      lastName: 'Alarcón Ríos',
+      firstName: PERFIL.director.nombres,
+      lastName: PERFIL.director.apellidos,
       phone: '999777888',
       roles: ['ADMIN', 'DOCTOR'],
       doctor: {
         create: {
-          licenseNumber: 'CMP-29014',
-          specialty: 'Medicina Interna',
+          licenseNumber: PERFIL.director.colegiatura,
+          specialty: PERFIL.director.especialidad,
           colorCode: '#EA580C',
           defaultSlotMinutes: 30,
         },
@@ -372,19 +512,19 @@ async function principal() {
   // encuentra el calendario vacío y cree que algo falló.
   await prisma.schedule.createMany({
     data: [
-      { doctorId: directorMedico.doctor!.id, dayOfWeek: 2, startMinute: 600, endMinute: 780, slotMinutes: 30, locationId: sedeMiraflores.id },
-      { doctorId: directorMedico.doctor!.id, dayOfWeek: 4, startMinute: 600, endMinute: 780, slotMinutes: 30, locationId: sedeMiraflores.id },
-      { doctorId: directorMedico.doctor!.id, dayOfWeek: 6, startMinute: 540, endMinute: 720, slotMinutes: 30, locationId: sedeMiraflores.id },
-      { doctorId: directorMedico.doctor!.id, dayOfWeek: 0, startMinute: 540, endMinute: 720, slotMinutes: 30, locationId: sedeMiraflores.id },
+      { doctorId: directorMedico.doctor!.id, dayOfWeek: 2, startMinute: 600, endMinute: 780, slotMinutes: 30, locationId: sedePrincipal.id },
+      { doctorId: directorMedico.doctor!.id, dayOfWeek: 4, startMinute: 600, endMinute: 780, slotMinutes: 30, locationId: sedePrincipal.id },
+      { doctorId: directorMedico.doctor!.id, dayOfWeek: 6, startMinute: 540, endMinute: 720, slotMinutes: 30, locationId: sedePrincipal.id },
+      { doctorId: directorMedico.doctor!.id, dayOfWeek: 0, startMinute: 540, endMinute: 720, slotMinutes: 30, locationId: sedePrincipal.id },
     ],
   })
 
   const medicos: { id: string; minutos: number; nombre: string }[] = []
 
-  for (const datos of MEDICOS) {
+  for (const datos of PERFIL.medicos) {
     const usuario = await prisma.user.create({
       data: {
-        email: datos.email,
+        email: correo(datos.usuario),
         password: contrasena,
         firstName: datos.nombres,
         lastName: datos.apellidos,
@@ -414,7 +554,7 @@ async function principal() {
           startMinute: horario.inicio,
           endMinute: horario.fin,
           slotMinutes: datos.minutos,
-          locationId: indice % 3 === 0 ? sedeSanIsidro.id : sedeMiraflores.id,
+          locationId: indice % 3 === 0 ? sedeSecundaria.id : sedePrincipal.id,
         },
       })
     }
@@ -431,7 +571,7 @@ async function principal() {
     })),
   })
 
-  console.log(`  Personal: 1 admin, 1 recepción, 1 enfermería, ${MEDICOS.length + 1} médicos`)
+  console.log(`  Personal: 1 admin, 1 recepción, 1 enfermería, ${PERFIL.medicos.length + 1} médicos`)
 
   // --- Pacientes -------------------------------------------------------------
   const pacientes = []
@@ -544,14 +684,24 @@ async function principal() {
     ],
   })
 
-  console.log('\n  Listo. Cuentas de prueba (contraseña: ' + CONTRASENA + '):\n')
-  console.log('    admin@clinica.demo        ADMIN')
-  console.log('    director@clinica.demo     ADMIN + DOCTOR  (el dueño que también atiende)')
-  console.log('    ana.ruiz@clinica.demo     DOCTOR — Cardiología, mañanas')
-  console.log('    carlos.mendoza@clinica.demo  DOCTOR — Pediatría, tardes')
-  console.log('    lucia.paredes@clinica.demo   DOCTOR — Medicina General, turno partido')
-  console.log('    recepcion@clinica.demo    RECEPTIONIST')
-  console.log('    enfermeria@clinica.demo   NURSE\n')
+  const cuentas: [string, string][] = [
+    [correo(PERFIL.administrador.usuario), 'ADMIN'],
+    [correo(PERFIL.director.usuario), `ADMIN + DOCTOR — ${PERFIL.director.especialidad} (el dueño, que también atiende)`],
+    ...PERFIL.medicos.map(
+      (m): [string, string] => [correo(m.usuario), `DOCTOR — ${m.especialidad}`],
+    ),
+    [correo(PERFIL.recepcion.usuario), 'RECEPTIONIST'],
+    [correo(PERFIL.enfermeria.usuario), 'NURSE'],
+  ]
+
+  const ancho = Math.max(...cuentas.map(([c]) => c.length))
+
+  console.log(`\n  Listo — ${PERFIL.clinica.nombre}`)
+  console.log(`  Cuentas de prueba (contraseña: ${CONTRASENA}):\n`)
+  for (const [cuenta, descripcion] of cuentas) {
+    console.log(`    ${cuenta.padEnd(ancho)}  ${descripcion}`)
+  }
+  console.log('')
 }
 
 try {

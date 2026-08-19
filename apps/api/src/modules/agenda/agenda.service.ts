@@ -23,7 +23,7 @@ import { registrarAuditoria } from '../../core/auditoria.js'
 import type { ContextoAuth } from '../../core/contexto.js'
 import { ErrorConflicto, ErrorNoEncontrado } from '../../core/errores.js'
 import { exigirPermiso } from '../../core/permisos.js'
-import { prisma } from '../../core/prisma.js'
+import { claveActiva, prisma } from '../../core/prisma.js'
 import { aFechaLocal, aInstante, diaDeLaSemana, hoyLocal, ZONA_POR_DEFECTO } from '../../core/tiempo.js'
 import { calcularHuecos, type Excepcion as ExcepcionMotor, type Franja } from './disponibilidad.js'
 
@@ -41,7 +41,14 @@ interface ConfiguracionAgenda {
   duracionPorDefecto: number
 }
 
-let configuracionCacheada: ConfiguracionAgenda | null = null
+/**
+ * Cacheada POR CONSULTORIO.
+ *
+ * Cuando un mismo proceso atiende a varios, una sola variable les daría a
+ * todos la zona horaria del primero que preguntara: las citas del otro se
+ * calcularían con el huso equivocado.
+ */
+const configuracionCacheada = new Map<string, ConfiguracionAgenda>()
 
 /**
  * Zona horaria y duración por defecto.
@@ -50,22 +57,26 @@ let configuracionCacheada: ConfiguracionAgenda | null = null
  * una vez al año. `olvidarConfiguracion()` la invalida cuando se edita.
  */
 export async function configuracionAgenda(): Promise<ConfiguracionAgenda> {
-  if (configuracionCacheada) return configuracionCacheada
+  const clave = claveActiva()
+  const cacheada = configuracionCacheada.get(clave)
+  if (cacheada) return cacheada
 
   const ajustes = await prisma.clinicSettings.findUnique({
     where: { id: 1 },
     select: { timezone: true, defaultSlotMinutes: true },
   })
 
-  configuracionCacheada = {
+  const configuracion = {
     zonaHoraria: ajustes?.timezone ?? ZONA_POR_DEFECTO,
     duracionPorDefecto: ajustes?.defaultSlotMinutes ?? 20,
   }
-  return configuracionCacheada
+  configuracionCacheada.set(clave, configuracion)
+  return configuracion
 }
 
+/** Invalida la del consultorio en curso; la de los demás no ha cambiado. */
 export function olvidarConfiguracion(): void {
-  configuracionCacheada = null
+  configuracionCacheada.delete(claveActiva())
 }
 
 // =============================================================================
