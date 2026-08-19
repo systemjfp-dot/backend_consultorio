@@ -99,11 +99,6 @@ export interface UsuarioSesion {
 export interface RespuestaLogin {
   accessToken: string
   usuario: UsuarioSesion
-  /**
-   * El usuario es ADMIN y todavía no configuró el segundo factor.
-   * La web debe llevarlo a la pantalla de configuración antes que a nada más.
-   */
-  debeConfigurar2FA: boolean
 }
 
 /** Primer paso del login cuando la cuenta tiene 2FA activo. */

@@ -13,12 +13,7 @@ import {
 import { authenticator } from 'otplib'
 import { env } from '../../config/env.js'
 import { registrarAuditoria } from '../../core/auditoria.js'
-import {
-  ErrorConflicto,
-  ErrorNoAutenticado,
-  ErrorNoEncontrado,
-  ErrorProhibido,
-} from '../../core/errores.js'
+import { ErrorConflicto, ErrorNoAutenticado, ErrorNoEncontrado } from '../../core/errores.js'
 import { logger } from '../../core/logger.js'
 import { prisma } from '../../core/prisma.js'
 import {
@@ -125,7 +120,6 @@ export type ResultadoInicioSesion =
       tipo: 'sesion'
       tokens: ParDeTokens
       usuario: UsuarioSesion
-      debeConfigurar2FA: boolean
     }
 
 /**
@@ -215,15 +209,11 @@ async function completarInicioSesion(
     userAgent: cliente.userAgent,
   })
 
-  return {
-    tipo: 'sesion',
-    tokens,
-    usuario,
-    // ADMIN es la cuenta que gestiona al personal y las integraciones: se le
-    // exige segundo factor. No se le bloquea el acceso —tiene que poder entrar
-    // para configurarlo—, pero la web lo lleva directo a esa pantalla.
-    debeConfigurar2FA: roles.includes('ADMIN') && !usuario.twoFactorEnabled,
-  }
+  // El segundo factor es voluntario para todos, incluido ADMIN: se activa
+  // desde el perfil si se quiere. Obligarlo dejaba al administrador de un
+  // consultorio pequeño —a menudo la misma persona que atiende— sin poder
+  // entrar hasta configurar una app de autenticación.
+  return { tipo: 'sesion', tokens, usuario }
 }
 
 /** Segundo paso del login: valida el código TOTP contra el token de desafío. */
@@ -604,14 +594,6 @@ export async function desactivarSegundoFactor(
 
   if (!usuario.twoFactorEnabled) throw new ErrorConflicto('El segundo factor no está activo')
 
-  // La restricción de rol se comprueba primero: pedirle a un administrador la
-  // contraseña y el código para después negarle la operación es una pérdida de
-  // tiempo, y deja sus credenciales escritas para nada.
-  if (usuario.roles.includes('ADMIN')) {
-    throw new ErrorProhibido(
-      'Las cuentas de administrador deben mantener el segundo factor activo',
-    )
-  }
 
   // Se exigen ambas pruebas: quien se apodere de una sesión abierta no debe
   // poder desarmar la protección solo por tenerla delante.

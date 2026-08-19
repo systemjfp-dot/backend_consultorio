@@ -1,9 +1,11 @@
 /**
  * Configuración del segundo factor.
  *
- * Las cuentas de administrador deben tenerlo activo, así que esta pantalla es
- * obligatoria para ellas antes de poder usar el sistema. Para el resto es
- * voluntaria y se llega desde el perfil.
+ * Voluntaria para todos, incluido el administrador: se llega desde el perfil.
+ * Antes era obligatoria para ADMIN y bloqueaba el resto del sistema hasta
+ * configurarla; en un consultorio pequeño el administrador suele ser también
+ * quien atiende, y quedarse fuera por no tener a mano la app de autenticación
+ * es peor problema que el que resolvía.
  */
 
 import QRCode from 'qrcode'
@@ -17,8 +19,8 @@ interface Preparacion {
   uri: string
 }
 
-export function ConfigurarDosFactores({ obligatorio = false }: { obligatorio?: boolean }) {
-  const { refrescarUsuario, cerrarSesion } = useAuth()
+export function ConfigurarDosFactores() {
+  const { refrescarUsuario } = useAuth()
 
   const [preparacion, setPreparacion] = useState<Preparacion | null>(null)
   const [imagenQr, setImagenQr] = useState<string | null>(null)
@@ -70,9 +72,7 @@ export function ConfigurarDosFactores({ obligatorio = false }: { obligatorio?: b
     <div className="mx-auto w-full max-w-md p-4 sm:p-6">
       <h1 className="mb-1 text-xl font-semibold text-gray-900">Verificación en dos pasos</h1>
       <p className="mb-5 text-sm text-gray-600">
-        {obligatorio
-          ? 'Las cuentas de administrador requieren un segundo factor. Es la cuenta que gestiona al personal y las integraciones.'
-          : 'Añade una capa extra de seguridad a tu cuenta.'}
+        Añade una capa extra de seguridad a tu cuenta. Es opcional.
       </p>
 
       {error && (
@@ -131,13 +131,6 @@ export function ConfigurarDosFactores({ obligatorio = false }: { obligatorio?: b
           </Boton>
         </form>
 
-        {obligatorio && (
-          <div className="mt-4 border-t border-gray-100 pt-4">
-            <Boton variante="fantasma" anchoCompleto onClick={() => void cerrarSesion()}>
-              Cerrar sesión
-            </Boton>
-          </div>
-        )}
       </Tarjeta>
 
       <p className="mt-4 text-center text-xs text-gray-500">

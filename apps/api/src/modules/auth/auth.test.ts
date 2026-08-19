@@ -161,16 +161,13 @@ describe('inicio de sesión', () => {
     expect(inexistente.body.error.mensaje).toBe(existente.body.error.mensaje)
   })
 
-  it('avisa que un ADMIN sin 2FA debe configurarlo', async () => {
+  it('un ADMIN sin segundo factor entra como cualquier otro', async () => {
+    // El segundo factor es voluntario: nadie queda retenido por no tenerlo.
     const res = await login(EMAIL_ADMIN)
 
     expect(res.status).toBe(200)
-    expect(res.body.debeConfigurar2FA).toBe(true)
-  })
-
-  it('un médico sin 2FA no recibe ese aviso', async () => {
-    const res = await login(EMAIL_MEDICO)
-    expect(res.body.debeConfigurar2FA).toBe(false)
+    expect(res.body.accessToken).toBeTruthy()
+    expect(res.body.requiere2FA).toBeUndefined()
   })
 
   it('registra el intento fallido en la auditoría', async () => {
@@ -458,7 +455,10 @@ describe('segundo factor', () => {
     expect(res.status).toBe(401)
   })
 
-  it('un ADMIN no puede desactivar su segundo factor', async () => {
+  it('un ADMIN puede desactivar su segundo factor', async () => {
+    // Ya no se le impone, así que tampoco se le impide quitarlo. Sigue
+    // exigiéndose contraseña y código: quien deja una sesión abierta no puede
+    // bajarle la seguridad a la cuenta.
     const secreto = await activar2FA(EMAIL_ADMIN)
     const desafio = await login(EMAIL_ADMIN)
 
@@ -472,9 +472,9 @@ describe('segundo factor', () => {
       .set('Authorization', `Bearer ${sesion.body.accessToken}`)
       .send({ password: CONTRASENA, codigo: authenticator.generate(secreto) })
 
-    expect(res.status).toBe(403)
+    expect(res.status).toBe(200)
     expect(
       (await prisma.user.findUniqueOrThrow({ where: { id: idAdmin } })).twoFactorEnabled,
-    ).toBe(true)
+    ).toBe(false)
   })
 })

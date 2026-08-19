@@ -6,7 +6,7 @@
  * qué orden— y eso debe poder verificarse sin base de datos.
  */
 
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App.js'
@@ -182,20 +182,16 @@ describe('con sesión restaurada', () => {
   })
 })
 
-describe('segundo factor obligatorio', () => {
-  it('un administrador sin 2FA no llega a ninguna otra pantalla', async () => {
+describe('segundo factor voluntario', () => {
+  it('un administrador sin 2FA entra directo al sistema', async () => {
+    // Antes quedaba retenido en la pantalla de configuración. En un
+    // consultorio pequeño el administrador suele ser quien atiende: dejarlo
+    // fuera por no tener la app de autenticación a mano paraba la consulta.
     simularApi({
       '/api/auth/refresh': { estado: 401, cuerpo: { error: { codigo: 'NO_AUTENTICADO', mensaje: 'no' } } },
       '/api/instalacion/estado': { cuerpo: { instalado: true } },
       '/api/auth/login': {
-        cuerpo: {
-          accessToken: 'token-1',
-          usuario: USUARIO_ADMIN_SIN_2FA,
-          debeConfigurar2FA: true,
-        },
-      },
-      '/api/auth/2fa/preparar': {
-        cuerpo: { secreto: 'JBSWY3DPEHPK3PXP', uri: 'otpauth://totp/Consultorio:admin' },
+        cuerpo: { accessToken: 'token-1', usuario: USUARIO_ADMIN_SIN_2FA },
       },
     })
 
@@ -206,15 +202,25 @@ describe('segundo factor obligatorio', () => {
     await usuario.type(screen.getByLabelText('Contraseña'), 'Demo2026!')
     await usuario.click(screen.getByRole('button', { name: 'Iniciar sesión' }))
 
-    await waitFor(() => {
-      expect(screen.getByText('Verificación en dos pasos')).toBeDefined()
+    // Llega al sistema: hay menú y no hay pantalla de configuración.
+    expect(await screen.findByRole('link', { name: /Personal/ })).toBeDefined()
+    expect(screen.queryByText('Verificación en dos pasos')).toBeNull()
+  })
+
+  it('se puede configurar desde el perfil si se quiere', async () => {
+    simularApi({
+      '/api/auth/refresh': { cuerpo: { accessToken: 'token-1', usuario: USUARIO_ADMIN_SIN_2FA } },
+      '/api/instalacion/estado': { cuerpo: { instalado: true } },
+      '/api/auth/2fa/preparar': {
+        cuerpo: { secreto: 'JBSWY3DPEHPK3PXP', uri: 'otpauth://totp/Consultorio:admin' },
+      },
     })
+    window.history.pushState({}, '', '/perfil/2fa')
 
-    // No hay menú: la cuenta está retenida en esta pantalla.
-    expect(screen.queryByRole('link', { name: /Personal/ })).toBeNull()
+    render(<App />)
 
-    // El secreto llega en una segunda petición, así que hay que esperarlo:
-    // consultarlo de inmediato lo buscaría antes de que la respuesta exista.
+    expect(await screen.findByText('Verificación en dos pasos')).toBeDefined()
+    // El secreto llega en una segunda petición, así que hay que esperarlo.
     expect(await screen.findByText('JBSWY3DPEHPK3PXP')).toBeDefined()
   })
 })

@@ -31,7 +31,6 @@ import { alPerderLaSesion, api, guardarAccessToken, recuperarSesion } from './ap
 interface RespuestaSesion {
   accessToken: string
   usuario: UsuarioSesion
-  debeConfigurar2FA?: boolean
 }
 
 interface RespuestaDesafio {
@@ -44,7 +43,6 @@ type RespuestaLogin = RespuestaSesion | RespuestaDesafio
 export interface EstadoAuth {
   usuario: UsuarioSesion | null
   cargando: boolean
-  debeConfigurar2FA: boolean
   /** ¿Puede realizar esta acción? Para mostrar u ocultar, nunca para proteger. */
   can: (permiso: Permiso, alcance?: Alcance) => boolean
   iniciarSesion: (email: string, password: string) => Promise<RespuestaLogin>
@@ -58,18 +56,15 @@ const ContextoAuth = createContext<EstadoAuth | null>(null)
 export function ProveedorAuth({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<UsuarioSesion | null>(null)
   const [cargando, setCargando] = useState(true)
-  const [debeConfigurar2FA, setDebeConfigurar2FA] = useState(false)
 
   const aplicarSesion = useCallback((datos: RespuestaSesion) => {
     guardarAccessToken(datos.accessToken)
     setUsuario(datos.usuario)
-    setDebeConfigurar2FA(datos.debeConfigurar2FA ?? false)
   }, [])
 
   const limpiarSesion = useCallback(() => {
     guardarAccessToken(null)
     setUsuario(null)
-    setDebeConfigurar2FA(false)
   }, [])
 
   // Al arrancar se intenta recuperar la sesión con la cookie de refresh. Es lo
@@ -131,7 +126,6 @@ export function ProveedorAuth({ children }: { children: ReactNode }) {
   const refrescarUsuario = useCallback(async () => {
     const datos = await api.get<{ usuario: UsuarioSesion }>('/api/auth/yo')
     setUsuario(datos.usuario)
-    if (datos.usuario.twoFactorEnabled) setDebeConfigurar2FA(false)
   }, [])
 
   const can = useCallback(
@@ -155,14 +149,13 @@ export function ProveedorAuth({ children }: { children: ReactNode }) {
     () => ({
       usuario,
       cargando,
-      debeConfigurar2FA,
       can,
       iniciarSesion,
       completar2FA,
       cerrarSesion,
       refrescarUsuario,
     }),
-    [usuario, cargando, debeConfigurar2FA, can, iniciarSesion, completar2FA, cerrarSesion, refrescarUsuario],
+    [usuario, cargando, can, iniciarSesion, completar2FA, cerrarSesion, refrescarUsuario],
   )
 
   return <ContextoAuth value={valor}>{children}</ContextoAuth>

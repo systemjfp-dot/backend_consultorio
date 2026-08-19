@@ -67,13 +67,10 @@ function crearClienteConsultas() {
 
 /** Envuelve las rutas que requieren sesión. */
 function RutaProtegida({ children }: { children: ReactNode }) {
-  const { usuario, cargando, debeConfigurar2FA } = useAuth()
+  const { usuario, cargando } = useAuth()
 
   if (cargando) return <Cargando mensaje="Restaurando sesión…" />
   if (!usuario) return <Navigate to="/login" replace />
-
-  // Un administrador sin segundo factor no llega a ninguna otra pantalla.
-  if (debeConfigurar2FA) return <ConfigurarDosFactores obligatorio />
 
   return <>{children}</>
 }

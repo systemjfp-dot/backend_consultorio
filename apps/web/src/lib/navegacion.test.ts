@@ -48,7 +48,9 @@ describe('menú según el rol', () => {
   it('el auditor solo ve lo suyo', () => {
     const etiquetas = menuVisible(puedeComo('AUDITOR')).map((e) => e.etiqueta)
 
-    expect(etiquetas).toEqual(['Inicio', 'Reportes', 'Auditoría'])
+    // Inicio y Seguridad no dependen del rol: no son módulos de trabajo, son
+    // la propia cuenta.
+    expect(etiquetas).toEqual(['Inicio', 'Reportes', 'Auditoría', 'Seguridad'])
   })
 
   it('todos ven Inicio', () => {

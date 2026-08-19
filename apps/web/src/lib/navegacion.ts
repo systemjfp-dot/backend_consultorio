@@ -78,6 +78,15 @@ export const MENU: EntradaMenu[] = [
     icono: '⚙',
     permiso: 'settings:read',
   },
+  {
+    // Va al final y sin permiso: no es un módulo de trabajo, es la propia
+    // cuenta, y cualquiera puede reforzar la suya. Antes solo se llegaba aquí
+    // porque el sistema retenía al administrador; siendo voluntario, sin
+    // entrada en el menú la pantalla quedaría inalcanzable.
+    ruta: '/perfil/2fa',
+    etiqueta: 'Seguridad',
+    icono: '⚿',
+  },
 ]
 
 /** Entradas visibles para quien tiene estos permisos. */

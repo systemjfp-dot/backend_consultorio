@@ -63,7 +63,6 @@ function enviarSesion(res: Response, resultado: Extract<servicio.ResultadoInicio
   res.json({
     accessToken: resultado.tokens.accessToken,
     usuario: resultado.usuario,
-    debeConfigurar2FA: resultado.debeConfigurar2FA,
   })
 }
 
