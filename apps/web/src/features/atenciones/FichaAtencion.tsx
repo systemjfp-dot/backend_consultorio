@@ -27,6 +27,8 @@ import { Alerta, Boton, Cargando, Tarjeta } from '../../components/ui/index.js'
 import { ErrorApi } from '../../lib/api.js'
 import { useAuth } from '../../lib/auth.js'
 import { useRetraso } from '../../lib/useRetraso.js'
+import { ExamenesDeLaAtencion } from '../examenes/ExamenesDeLaAtencion.js'
+import { NuevaOrden } from '../examenes/NuevaOrden.js'
 import { NuevaReceta } from '../recetas/NuevaReceta.js'
 import { RecetasDeLaAtencion } from '../recetas/RecetasDeLaAtencion.js'
 import { BuscadorCie10 } from './BuscadorCie10.js'
@@ -91,6 +93,7 @@ export function FichaAtencion() {
   const [error, setError] = useState<string | null>(null)
   const [guardadoEn, setGuardadoEn] = useState<Date | null>(null)
   const [recetando, setRecetando] = useState(false)
+  const [ordenando, setOrdenando] = useState(false)
 
   // Carga inicial del formulario. Solo una vez: después manda el borrador
   // local, o el guardado automático pisaría lo que se está escribiendo.
@@ -451,6 +454,19 @@ export function FichaAtencion() {
           </Tarjeta>
         )}
 
+        {/* --- Exámenes --- */}
+        {can('exam:create') && (
+          <Tarjeta>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="font-medium text-gray-900">Exámenes auxiliares</h2>
+              <Boton variante="secundario" onClick={() => setOrdenando(true)}>
+                Ordenar exámenes
+              </Boton>
+            </div>
+            <ExamenesDeLaAtencion atencionId={atencion.id} />
+          </Tarjeta>
+        )}
+
         {/* --- Addenda --- */}
         {atencion.addenda.length > 0 && (
           <Tarjeta>
@@ -475,6 +491,14 @@ export function FichaAtencion() {
           atencionId={atencion.id}
           onCerrar={() => setRecetando(false)}
           onEmitida={() => setRecetando(false)}
+        />
+      )}
+
+      {ordenando && (
+        <NuevaOrden
+          atencionId={atencion.id}
+          onCerrar={() => setOrdenando(false)}
+          onEmitida={() => setOrdenando(false)}
         />
       )}
 

@@ -172,6 +172,38 @@ export const api = {
 }
 
 /**
+ * Sube un archivo tal cual, sin envolverlo en multipart.
+ *
+ * El servidor lo recibe como cuerpo crudo: para un único archivo sin campos
+ * que lo acompañen, multipart solo añadiría una librería de parseo y una capa
+ * de codificación que después hay que deshacer.
+ */
+export async function subirArchivo<T>(ruta: string, archivo: File): Promise<T> {
+  const respuesta = await fetch(ruta, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': archivo.type || 'application/octet-stream',
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
+    body: archivo,
+  })
+
+  const datos: unknown = await respuesta.json().catch(() => null)
+
+  if (!respuesta.ok) {
+    const error = (datos as { error?: { codigo: string; mensaje: string } } | null)?.error
+    throw new ErrorApi(
+      respuesta.status,
+      error?.codigo ?? 'ERROR_DESCONOCIDO',
+      error?.mensaje ?? 'No se pudo subir el archivo',
+    )
+  }
+
+  return datos as T
+}
+
+/**
  * Descarga un archivo binario protegido.
  *
  * Hace falta porque el access token vive EN MEMORIA, no en una cookie: un

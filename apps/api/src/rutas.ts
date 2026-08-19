@@ -15,6 +15,7 @@ import { rutasAuditoria } from './modules/auditoria/auditoria.routes.js'
 import { rutasAuth } from './modules/auth/auth.routes.js'
 import { rutasCitas } from './modules/citas/citas.routes.js'
 import { rutasEmergencia } from './modules/emergencia/emergencia.routes.js'
+import { rutasExamenes } from './modules/examenes/examenes.routes.js'
 import { rutasInstalacion } from './modules/instalacion/instalacion.routes.js'
 import { rutasPacientes } from './modules/pacientes/pacientes.routes.js'
 import { rutasPerfil } from './modules/perfil/perfil.routes.js'
@@ -37,5 +38,6 @@ export const MODULOS_DE_RUTAS: ModuloDeRutas[] = [
   { prefijo: '/api/citas', router: rutasCitas },
   { prefijo: '/api/atenciones', router: rutasAtenciones },
   { prefijo: '/api/recetas', router: rutasRecetas },
+  { prefijo: '/api/examenes', router: rutasExamenes },
   { prefijo: '/api/perfil', router: rutasPerfil },
 ]
