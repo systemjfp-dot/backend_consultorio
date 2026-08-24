@@ -16,6 +16,11 @@ import { logger } from './logger.js'
 let navegador: Browser | null = null
 let arrancando: Promise<Browser> | null = null
 
+/** Ruta al Chromium del sistema, si el entorno la indica. */
+function ejecutableDelSistema(): string | null {
+  return process.env['PUPPETEER_EXECUTABLE_PATH']?.trim() || null
+}
+
 async function obtenerNavegador(): Promise<Browser> {
   if (navegador?.connected) return navegador
 
@@ -26,6 +31,15 @@ async function obtenerNavegador(): Promise<Browser> {
       headless: true,
       // Necesarios en contenedores: sin ellos Chromium no arranca en Railway.
       args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+      /*
+       * En la imagen de producción Chromium se instala con el gestor de
+       * paquetes del sistema, no lo descarga Puppeteer: son ~170 MB que
+       * engordan la imagen y una versión que hay que mantener aparte.
+       * `PUPPETEER_EXECUTABLE_PATH` apunta al binario del sistema; sin la
+       * variable —en desarrollo— Puppeteer usa el suyo, que es lo que ya
+       * ocurría.
+       */
+      ...(ejecutableDelSistema() ? { executablePath: ejecutableDelSistema()! } : {}),
     })
     .then((instancia) => {
       navegador = instancia

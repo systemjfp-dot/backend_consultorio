@@ -15,7 +15,24 @@ import type { RequestHandler } from 'express'
 import { consultorioDeDominio, esMultiConsultorio } from '../config/consultorios.js'
 import { conConsultorio } from '../core/prisma.js'
 
+/**
+ * Rutas que no pertenecen a ningún consultorio.
+ *
+ * El orquestador consulta la salud por una dirección interna que no es el
+ * dominio de nadie. Sin esta excepción, el chequeo recibiría el 404 de dominio
+ * desconocido, Railway daría el despliegue por fallido y reiniciaría en bucle
+ * un contenedor que en realidad está perfectamente sano.
+ *
+ * No filtra nada: `/api/health` solo dice si el proceso vive, y
+ * `/api/health/ready` comprueba TODAS las bases, no la de un consultorio.
+ */
+function esRutaSinConsultorio(ruta: string): boolean {
+  return ruta === '/api/health' || ruta === '/api/health/ready'
+}
+
 export const resolverConsultorio: RequestHandler = (req, res, next) => {
+  if (esRutaSinConsultorio(req.path)) return next()
+
   const dominio = req.hostname
 
   const consultorio = consultorioDeDominio(dominio)

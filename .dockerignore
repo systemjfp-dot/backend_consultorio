@@ -1,0 +1,39 @@
+# Lo que NO debe entrar en la imagen.
+#
+# Copiar node_modules del anfitrión sería peor que inútil: trae binarios
+# compilados para macOS que no funcionan en el contenedor, y encima invalida la
+# capa de dependencias en cada build.
+
+node_modules
+**/node_modules
+.pnpm-store
+
+# Compilados locales: la imagen los genera ella misma.
+dist
+**/dist
+*.tsbuildinfo
+
+# Credenciales. El .env vive en las variables de Railway, nunca en la imagen:
+# lo que entra en una capa queda ahí para quien pueda descargarla.
+.env
+.env.*
+!.env.example
+
+# Datos de pacientes: firmas y PDF emitidos. Van en un volumen, no en la imagen.
+storage
+uploads
+
+# Historia y documentación: no hacen falta para ejecutar y engordan el contexto
+# que Docker envía al construir.
+.git
+.github
+datos
+README.md
+*.md
+
+# Ruido local
+.DS_Store
+coverage
+*.log
+.vscode
+.idea

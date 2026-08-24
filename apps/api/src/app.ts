@@ -18,6 +18,7 @@ import { cargarSesion } from './middleware/autenticar.js'
 import { resolverConsultorio } from './middleware/consultorio.js'
 import { manejadorErrores, manejadorNoEncontrado } from './middleware/errores.js'
 import { limiteGeneral } from './middleware/limites.js'
+import { montarWeb } from './middleware/web.js'
 import { MODULOS_DE_RUTAS } from './rutas.js'
 
 export function crearApp(): Express {
@@ -98,6 +99,11 @@ export function crearApp(): Express {
   for (const modulo of MODULOS_DE_RUTAS) {
     app.use(modulo.prefijo, modulo.router)
   }
+
+  // --- Interfaz web ---------------------------------------------------------
+  // Va después de las rutas de la API y antes del 404: así una ruta de API mal
+  // escrita sigue devolviendo JSON, y cualquier otra cae en la aplicación.
+  montarWeb(app)
 
   // --- Cierre ---------------------------------------------------------------
   // Estos dos van siempre al final: Express elige el primer manejador que

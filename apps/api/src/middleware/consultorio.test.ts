@@ -195,4 +195,19 @@ describe('aislamiento entre consultorios', () => {
     expect(res.status).toBe(404)
     expect(res.body.error.codigo).toBe('CONSULTORIO_DESCONOCIDO')
   })
+
+  it('la salud responde aunque el dominio no sea de ningún consultorio', async () => {
+    // El orquestador chequea por una dirección interna que no es el dominio de
+    // nadie. Si eso devolviera el 404 de dominio desconocido, Railway daría
+    // por fallido un despliegue sano y lo reiniciaría en bucle.
+    const vivo = await request(app).get('/api/health').set('Host', 'healthcheck.interno')
+    const listo = await request(app).get('/api/health/ready').set('Host', 'healthcheck.interno')
+
+    expect(vivo.status).toBe(200)
+    expect(vivo.body.estado).toBe('ok')
+
+    // `ready` comprueba TODAS las bases, no la de un consultorio concreto.
+    expect(listo.status).toBe(200)
+    expect(listo.body.baseDeDatos).toBe('ok')
+  })
 })

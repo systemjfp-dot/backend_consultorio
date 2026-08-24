@@ -1,0 +1,97 @@
+# =============================================================================
+#  Imagen de producción: API + interfaz web en un solo contenedor
+# =============================================================================
+#
+#  Un contenedor sirve las dos cosas, así que cada consultorio tiene UN dominio
+#  y no hay CORS de por medio.
+#
+#  POR QUÉ UN DOCKERFILE Y NO NIXPACKS: Puppeteer. La detección automática
+#  monta bien un servidor Node, pero deja el contenedor sin Chromium, y el
+#  fallo no aparece al desplegar sino al emitir la primera receta. Aquí el
+#  navegador se instala con apt y su ruta queda fija; nada que adivinar.
+#
+#  Construcción en dos etapas: la imagen final no lleva ni las dependencias de
+#  desarrollo ni el código TypeScript.
+
+# --- Etapa 1: compilar -------------------------------------------------------
+FROM node:22-slim AS constructor
+
+# Puppeteer NO debe descargar su Chromium: la imagen final usa el del sistema.
+# Son ~170 MB que no harían falta y una versión más que mantener.
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+
+RUN corepack enable
+
+WORKDIR /app
+
+# Los manifiestos primero: mientras no cambien, Docker reutiliza la capa de
+# dependencias y no vuelve a instalar en cada despliegue.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json    apps/api/
+COPY apps/web/package.json    apps/web/
+COPY packages/shared/package.json packages/shared/
+
+RUN pnpm install --frozen-lockfile
+
+COPY . .
+
+# El cliente de Prisma se genera a partir del esquema; sin esto el build falla
+# al no encontrar los tipos.
+RUN pnpm --filter @consultorio/api db:generate
+
+# El orden importa: la web y la API importan el paquete compartido ya compilado.
+RUN pnpm --filter @consultorio/shared build \
+ && pnpm --filter @consultorio/web build \
+ && pnpm --filter @consultorio/api build
+
+# Se descartan las dependencias de desarrollo antes de copiar a la imagen final.
+RUN pnpm prune --prod
+
+# --- Etapa 2: ejecutar -------------------------------------------------------
+FROM node:22-slim AS ejecucion
+
+# chromium      → generación de PDF (recetas y órdenes de examen)
+# fonts-*       → sin fuentes, el PDF sale con cuadros en vez de letras, y los
+#                 acentos y la "ñ" son lo primero que desaparece
+# ca-certificates → HTTPS hacia las integraciones (consulta de DNI, SMTP)
+# tini          → recoge los procesos zombis que deja Chromium al cerrarse
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      chromium \
+      fonts-liberation \
+      fonts-dejavu-core \
+      ca-certificates \
+      tini \
+ && rm -rf /var/lib/apt/lists/*
+
+ENV NODE_ENV=production \
+    PUPPETEER_SKIP_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+    STORAGE_DIR=/datos/storage
+
+WORKDIR /app
+
+COPY --from=constructor /app/node_modules              ./node_modules
+COPY --from=constructor /app/package.json              ./package.json
+COPY --from=constructor /app/apps/api/node_modules     ./apps/api/node_modules
+COPY --from=constructor /app/apps/api/dist             ./apps/api/dist
+COPY --from=constructor /app/apps/api/package.json     ./apps/api/package.json
+# El esquema y las migraciones viajan con la imagen: `migrate deploy` se ejecuta
+# al arrancar y las necesita en disco.
+COPY --from=constructor /app/apps/api/prisma           ./apps/api/prisma
+COPY --from=constructor /app/apps/web/dist             ./apps/web/dist
+COPY --from=constructor /app/packages/shared/dist      ./packages/shared/dist
+COPY --from=constructor /app/packages/shared/package.json ./packages/shared/package.json
+
+# Las firmas y los PDF viven aquí. En Railway se monta un volumen en /datos:
+# sin él, cada despliegue se llevaría por delante las recetas ya emitidas.
+RUN mkdir -p /datos/storage && chown -R node:node /datos
+
+# Nunca como root: si alguien encontrara la forma de ejecutar algo a través de
+# Chromium, se encontraría con un usuario sin privilegios.
+USER node
+
+EXPOSE 3000
+
+# Node como PID 1 no recoge procesos hijos; Chromium deja unos cuantos.
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["node", "apps/api/dist/server.js"]

@@ -5,10 +5,24 @@
  */
 
 import { crearApp } from './app.js'
-import { env } from './config/env.js'
+import { migrarTodasLasBases } from './arranque/migrar.js'
+import { env, esProduccion } from './config/env.js'
 import { asegurarParticionesAuditoria } from './core/auditoria.js'
 import { logger } from './core/logger.js'
 import { desconectarBaseDeDatos } from './core/prisma.js'
+
+/*
+ * Las migraciones van ANTES de construir la aplicación y solo en producción.
+ *
+ * En desarrollo las aplica quien programa, cuando quiere, con `pnpm db:migrate`;
+ * hacerlo automáticamente al arrancar convertiría cada recarga en caliente en
+ * una migración sorpresa.
+ *
+ * Si fallan, el proceso muere y el despliegue se marca como fallido dejando en
+ * pie la versión anterior. Es justo lo que se busca: mejor no desplegar que
+ * servir un esquema a medio migrar.
+ */
+if (esProduccion) await migrarTodasLasBases()
 
 const app = crearApp()
 
