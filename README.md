@@ -1,7 +1,22 @@
 # Consultorio
 
 Sistema de gestión de consultorio médico: agenda multi-médico, historia clínica,
-recetas y órdenes de examen. Diseñado para **una clínica** con múltiples médicos y sedes.
+recetas y órdenes de examen.
+
+Un mismo despliegue puede atender a **varios consultorios independientes**: cada
+uno tiene su propia base de datos y se elige por el dominio de la petición. No
+hay `tenantId` en ninguna tabla —ver `apps/api/src/config/consultorios.ts`—, así
+que no existe consulta capaz de alcanzar los datos del otro.
+
+## Repositorios
+
+Este es el repositorio **completo**: servidor, código compartido e interfaz.
+
+La interfaz vive además en un repositorio propio,
+[frontend_consultorio](https://github.com/systemjfp-dot/frontend_consultorio),
+para poder desplegarla por separado. Contiene una copia de `packages/shared`
+(permisos, roles y contratos), así que **un cambio ahí hay que llevarlo a los dos
+sitios**: si se desincronizan, el formulario aceptará datos que la API rechaza.
 
 ## Requisitos
 
