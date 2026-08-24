@@ -89,21 +89,21 @@ WORKDIR /app
 
 # El árbol de dependencias de pnpm son enlaces desde cada paquete al almacén
 # de la raíz, así que hay que traer las dos partes o los enlaces no resuelven.
-COPY --from=constructor /app/node_modules              ./node_modules
-COPY --from=constructor /app/package.json              ./package.json
-COPY --from=constructor /app/pnpm-workspace.yaml       ./pnpm-workspace.yaml
-COPY --from=constructor /app/apps/api/node_modules     ./apps/api/node_modules
-COPY --from=constructor /app/apps/api/dist             ./apps/api/dist
-COPY --from=constructor /app/apps/api/package.json     ./apps/api/package.json
+COPY --from=constructor --chown=node:node /app/node_modules              ./node_modules
+COPY --from=constructor --chown=node:node /app/package.json              ./package.json
+COPY --from=constructor --chown=node:node /app/pnpm-workspace.yaml       ./pnpm-workspace.yaml
+COPY --from=constructor --chown=node:node /app/apps/api/node_modules     ./apps/api/node_modules
+COPY --from=constructor --chown=node:node /app/apps/api/dist             ./apps/api/dist
+COPY --from=constructor --chown=node:node /app/apps/api/package.json     ./apps/api/package.json
 # El esquema y las migraciones viajan con la imagen: `migrate deploy` se ejecuta
 # al arrancar y las necesita en disco.
-COPY --from=constructor /app/apps/api/prisma           ./apps/api/prisma
-COPY --from=constructor /app/apps/web/dist             ./apps/web/dist
-COPY --from=constructor /app/packages/shared/dist      ./packages/shared/dist
-COPY --from=constructor /app/packages/shared/package.json ./packages/shared/package.json
+COPY --from=constructor --chown=node:node /app/apps/api/prisma           ./apps/api/prisma
+COPY --from=constructor --chown=node:node /app/apps/web/dist             ./apps/web/dist
+COPY --from=constructor --chown=node:node /app/packages/shared/dist      ./packages/shared/dist
+COPY --from=constructor --chown=node:node /app/packages/shared/package.json ./packages/shared/package.json
 # El paquete compartido tiene sus propias dependencias (zod); sin su
 # node_modules, la API arranca y muere al importar el primer contrato.
-COPY --from=constructor /app/packages/shared/node_modules ./packages/shared/node_modules
+COPY --from=constructor --chown=node:node /app/packages/shared/node_modules ./packages/shared/node_modules
 
 # Las firmas y los PDF viven aquí. En Railway se monta un volumen en /datos:
 # sin él, cada despliegue se llevaría por delante las recetas ya emitidas.
