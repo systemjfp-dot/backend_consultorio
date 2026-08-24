@@ -95,6 +95,9 @@ COPY --from=constructor /app/apps/api/prisma           ./apps/api/prisma
 COPY --from=constructor /app/apps/web/dist             ./apps/web/dist
 COPY --from=constructor /app/packages/shared/dist      ./packages/shared/dist
 COPY --from=constructor /app/packages/shared/package.json ./packages/shared/package.json
+# El paquete compartido tiene sus propias dependencias (zod); sin su
+# node_modules, la API arranca y muere al importar el primer contrato.
+COPY --from=constructor /app/packages/shared/node_modules ./packages/shared/node_modules
 
 # Las firmas y los PDF viven aquí. En Railway se monta un volumen en /datos:
 # sin él, cada despliegue se llevaría por delante las recetas ya emitidas.
