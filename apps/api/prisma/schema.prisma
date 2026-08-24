@@ -21,6 +21,13 @@
 
 generator client {
   provider = "prisma-client-js"
+
+  /// El motor de consultas es un binario compilado para un sistema concreto.
+  /// `native` cubre la máquina donde se programa; el segundo destino es el
+  /// contenedor de producción (Debian bookworm, OpenSSL 3.0). Sin declararlo,
+  /// el proceso arranca —engaña— y falla en la primera consulta con
+  /// "could not locate the Query Engine".
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
