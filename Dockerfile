@@ -18,7 +18,11 @@ FROM node:22-slim AS constructor
 
 # Puppeteer NO debe descargar su Chromium: la imagen final usa el del sistema.
 # Son ~170 MB que no harían falta y una versión más que mantener.
-ENV PUPPETEER_SKIP_DOWNLOAD=true
+#
+# CI=true además hace que pnpm no pida confirmación al vaciar node_modules en
+# `prune`: sin terminal interactiva aborta la operación y tumba el build.
+ENV PUPPETEER_SKIP_DOWNLOAD=true \
+    CI=true
 
 RUN corepack enable
 
