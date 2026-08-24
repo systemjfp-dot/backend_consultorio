@@ -48,8 +48,15 @@ RUN pnpm --filter @consultorio/shared build \
  && pnpm --filter @consultorio/web build \
  && pnpm --filter @consultorio/api build
 
-# Se descartan las dependencias de desarrollo antes de copiar a la imagen final.
-RUN pnpm prune --prod
+# Las dependencias de desarrollo se quedan fuera reinstalando solo las de
+# producción sobre un árbol limpio.
+#
+# NO se usa `pnpm prune --prod`: en un monorepo deja los enlaces de los
+# paquetes hijos a medias, y el contenedor arranca hasta que Node intenta
+# resolver el primer import y no encuentra el paquete. Reinstalar es unos
+# segundos más de build a cambio de un árbol coherente.
+RUN rm -rf node_modules apps/api/node_modules apps/web/node_modules packages/shared/node_modules \
+ && pnpm install --frozen-lockfile --prod
 
 # --- Etapa 2: ejecutar -------------------------------------------------------
 FROM node:22-slim AS ejecucion
@@ -74,8 +81,11 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 
+# El árbol de dependencias de pnpm son enlaces desde cada paquete al almacén
+# de la raíz, así que hay que traer las dos partes o los enlaces no resuelven.
 COPY --from=constructor /app/node_modules              ./node_modules
 COPY --from=constructor /app/package.json              ./package.json
+COPY --from=constructor /app/pnpm-workspace.yaml       ./pnpm-workspace.yaml
 COPY --from=constructor /app/apps/api/node_modules     ./apps/api/node_modules
 COPY --from=constructor /app/apps/api/dist             ./apps/api/dist
 COPY --from=constructor /app/apps/api/package.json     ./apps/api/package.json
