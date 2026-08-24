@@ -58,6 +58,12 @@ RUN pnpm --filter @consultorio/shared build \
 RUN rm -rf node_modules apps/api/node_modules apps/web/node_modules packages/shared/node_modules \
  && pnpm install --frozen-lockfile --prod
 
+# El cliente de Prisma se genera DENTRO de node_modules, así que la
+# reinstalación anterior se lo llevó por delante. Sin regenerarlo, el paquete
+# @prisma/client queda como un módulo CommonJS vacío y el proceso muere al
+# importar PrismaClient.
+RUN pnpm --filter @consultorio/api db:generate
+
 # --- Etapa 2: ejecutar -------------------------------------------------------
 FROM node:22-slim AS ejecucion
 
