@@ -147,9 +147,10 @@ async function principal() {
 
   console.log(
     c.tenue(
-      '\n  Siguiente paso: inicia sesión y configura el segundo factor.\n' +
-        '  Las cuentas de administrador lo requieren, y una vez activo no se\n' +
-        '  puede desactivar.\n',
+      '\n  Siguiente paso: inicia sesión y cambia esta contraseña.\n' +
+        '  Si el sistema va a estar accesible desde internet, conviene activar\n' +
+        '  la verificación en dos pasos desde Seguridad: esta cuenta puede leer\n' +
+        '  todas las historias clínicas. Es opcional.\n',
     ),
   )
 }

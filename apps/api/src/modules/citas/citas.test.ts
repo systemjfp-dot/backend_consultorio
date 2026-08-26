@@ -11,7 +11,7 @@ import request from 'supertest'
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { crearApp } from '../../app.js'
 import { prisma } from '../../core/prisma.js'
-import { aInstante } from '../../core/tiempo.js'
+import { aFechaLocal, aInstante } from '../../core/tiempo.js'
 import { olvidarConfiguracion } from '../agenda/agenda.service.js'
 import { cifrarContrasena } from '../auth/contrasenas.js'
 
@@ -529,8 +529,16 @@ describe('reprogramación', () => {
 
 describe('sala de espera', () => {
   it('solo muestra a quienes ya llegaron', async () => {
-    const hoy = new Date()
-    hoy.setUTCHours(hoy.getUTCHours() + 2)
+    /*
+     * La cita se sitúa al MEDIODÍA LOCAL de hoy, no "dentro de dos horas".
+     *
+     * La sala de espera consulta el día local de la clínica, así que sumar
+     * horas al instante actual hacía fallar la prueba cuando se ejecutaba de
+     * noche: pasadas las 22:00 en Lima, "dentro de dos horas" ya es mañana y
+     * la cita quedaba fuera del rango consultado.
+     */
+    const hoyLocal = aFechaLocal(new Date(), 'America/Lima')
+    const hoy = aInstante(hoyLocal, 12 * 60, 'America/Lima')
 
     const cita = await prisma.appointment.create({
       data: {
